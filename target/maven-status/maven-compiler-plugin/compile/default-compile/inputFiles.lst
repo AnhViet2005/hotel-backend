@@ -26,6 +26,7 @@ D:\HocDiThangDauBuoi\TTTN\hotel-backend\src\main\java\com\hotel\backend\config\D
 D:\HocDiThangDauBuoi\TTTN\hotel-backend\src\main\java\com\hotel\backend\dto\ReviewRequestDTO.java
 D:\HocDiThangDauBuoi\TTTN\hotel-backend\src\main\java\com\hotel\backend\repository\NotificationRepository.java
 D:\HocDiThangDauBuoi\TTTN\hotel-backend\src\main\java\com\hotel\backend\controller\AdminRoomTypeController.java
+D:\HocDiThangDauBuoi\TTTN\hotel-backend\src\main\java\com\hotel\backend\config\DatabaseCheckRunner.java
 D:\HocDiThangDauBuoi\TTTN\hotel-backend\src\main\java\com\hotel\backend\repository\PromotionRepository.java
 D:\HocDiThangDauBuoi\TTTN\hotel-backend\src\main\java\com\hotel\backend\service\AdminHotelService.java
 D:\HocDiThangDauBuoi\TTTN\hotel-backend\src\main\java\com\hotel\backend\controller\UserController.java

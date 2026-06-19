@@ -6,9 +6,7 @@ import com.hotel.backend.model.Hotel;
 import com.hotel.backend.model.Review;
 import com.hotel.backend.model.User;
 import com.hotel.backend.repository.BookingRepository;
-import com.hotel.backend.repository.HotelRepository;
 import com.hotel.backend.repository.ReviewRepository;
-import com.hotel.backend.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -23,11 +21,10 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class ReviewService {
 
     private final ReviewRepository reviewRepository;
-    private final UserRepository userRepository;
-    private final HotelRepository hotelRepository;
 
     private final BookingRepository bookingRepository;
 

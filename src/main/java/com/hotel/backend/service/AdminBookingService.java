@@ -2,12 +2,11 @@ package com.hotel.backend.service;
 
 import com.hotel.backend.dto.AdminBookingResponse;
 import com.hotel.backend.model.Booking;
-import com.hotel.backend.model.Payment;
 import com.hotel.backend.model.User;
 import com.hotel.backend.repository.BookingRepository;
 import com.hotel.backend.repository.UserRepository;
+import com.hotel.backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,11 +19,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class AdminBookingService {
 
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final NotificationService notificationService;
 
     // ──────────────────────────────────────────────
     // Helpers
@@ -114,12 +114,76 @@ public class AdminBookingService {
         }
 
         try {
-            booking.setStatus(Booking.BookingStatus.valueOf(status.toUpperCase()));
+            Booking.BookingStatus newStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
+            booking.setStatus(newStatus);
+            
+            // Nếu hủy đặt phòng thì đặt doanh thu về 0
+            if (newStatus == Booking.BookingStatus.CANCELLED) {
+                booking.setAdminRevenue(java.math.BigDecimal.ZERO);
+                booking.setHotelOwnerRevenue(java.math.BigDecimal.ZERO);
+            }
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái không hợp lệ: " + status);
         }
 
-        return toResponse(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        // Gửi thông báo khi Admin cập nhật trạng thái (để xử lý TH thanh toán tiền mặt)
+        try {
+            if (saved.getHotel() != null && saved.getHotel().getOwner() != null) {
+                if (saved.getStatus() == Booking.BookingStatus.CONFIRMED) {
+                    notificationService.notifyDepositReceived(
+                        saved.getId(),
+                        saved.getBookingCode(),
+                        saved.getAdminRevenue(),
+                        saved.getHotel().getOwner().getId()
+                    );
+                } else if (saved.getStatus() == Booking.BookingStatus.COMPLETED) {
+                    notificationService.notifyFullPaymentReceived(
+                        saved.getId(),
+                        saved.getBookingCode(),
+                        saved.getTotalAmount(),
+                        saved.getHotel().getOwner().getId()
+                    );
+                }
+            }
+        } catch (Exception ignored) {}
+
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public void deleteBooking(Long id) {
+        User current = getCurrentUser();
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn đặt phòng."));
+
+        if (!isAdmin(current) && !isOwnerOfBooking(booking, current.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền xóa đơn đặt phòng này.");
+        }
+
+        // Chỉ cho phép xóa đơn đã hủy hoặc đã hoàn tất
+        if (booking.getStatus() != Booking.BookingStatus.CANCELLED && booking.getStatus() != Booking.BookingStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chỉ có thể xóa đơn hàng đã Hủy hoặc Hoàn tất.");
+        }
+
+        bookingRepository.delete(booking);
+    }
+
+    @Transactional
+    public void bulkDeleteBookings(List<Long> ids) {
+        User current = getCurrentUser();
+        List<Booking> bookings = bookingRepository.findAllById(ids);
+
+        for (Booking booking : bookings) {
+            if (!isAdmin(current) && !isOwnerOfBooking(booking, current.getId())) {
+                continue; // Skip if no permission
+            }
+
+            // Chỉ xóa đơn đã hủy hoặc hoàn tất
+            if (booking.getStatus() == Booking.BookingStatus.CANCELLED || booking.getStatus() == Booking.BookingStatus.COMPLETED) {
+                bookingRepository.delete(booking);
+            }
+        }
     }
 
     // ──────────────────────────────────────────────

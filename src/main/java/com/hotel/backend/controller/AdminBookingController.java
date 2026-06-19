@@ -29,4 +29,16 @@ public class AdminBookingController {
             @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(adminBookingService.updateStatus(id, body.get("status")));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteBooking(@PathVariable Long id) {
+        adminBookingService.deleteBooking(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<Void> bulkDelete(@RequestBody List<Long> ids) {
+        adminBookingService.bulkDeleteBookings(ids);
+        return ResponseEntity.noContent().build();
+    }
 }

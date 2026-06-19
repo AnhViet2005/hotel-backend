@@ -20,11 +20,11 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import com.hotel.backend.model.Hotel;
 import java.util.List;
 
 import java.util.stream.Collectors;
@@ -227,8 +227,25 @@ public class AdminController {
                 .revenueDistribution("Admin: 30% | Hotel Owner: 70%")
                 .build());
     }
+// ─── Hotel Deletion ────────────────────────────────────────────────────────
+@DeleteMapping("/hotels/{hotelId}")
+@Transactional
+public ResponseEntity<String> deleteHotel(@PathVariable Long hotelId) {
+    // Get current logged‑in user
+    User current = getCurrentUser();
 
+    // Find the hotel; 404 if not exists
+    Hotel hotel = hotelRepository.findById(hotelId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Hotel not found"));
 
+    // Only ADMIN or the OWNER of this hotel may delete it
+    if (!isAdmin(current) && (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId()))) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to delete this hotel");
+    }
 
+    // Perform deletion (cascade should handle related rooms/bookings if configured)
+    hotelRepository.delete(hotel);
+    return ResponseEntity.ok("Hotel deleted successfully");
+}
     
 }

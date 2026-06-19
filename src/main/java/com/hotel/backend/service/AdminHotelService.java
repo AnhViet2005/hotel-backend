@@ -18,11 +18,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class AdminHotelService {
 
     private final HotelRepository hotelRepository;
@@ -88,6 +88,7 @@ public class AdminHotelService {
                 .email(request.getEmail())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .basePrice(request.getBasePrice())
+                .depositPercentage(request.getDepositPercentage() != null ? request.getDepositPercentage() : 30)
                 .build();
         // Set owner
         if (isAdmin(current)) {
@@ -127,6 +128,7 @@ public class AdminHotelService {
         if (request.getEmail() != null) hotel.setEmail(request.getEmail());
         if (request.getIsActive() != null) hotel.setIsActive(request.getIsActive());
         if (request.getBasePrice() != null) hotel.setBasePrice(request.getBasePrice());
+        if (request.getDepositPercentage() != null) hotel.setDepositPercentage(request.getDepositPercentage());
         if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
             hotelImageRepository.findPrimaryByHotelId(id).ifPresentOrElse(
                     img -> { img.setImageUrl(request.getImageUrl()); hotelImageRepository.save(img); },
@@ -197,6 +199,7 @@ public class AdminHotelService {
                 .addressLine(hotel.getAddressLine())
                 .phone(hotel.getPhone())
                 .email(hotel.getEmail())
+                .depositPercentage(hotel.getDepositPercentage() != null ? hotel.getDepositPercentage() : 30)
                 .build();
     }
 }

@@ -11,16 +11,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class PublicHotelService {
 
     private final HotelRepository hotelRepository;
     private final RoomTypeRepository roomTypeRepository;
+    private final com.hotel.backend.repository.BookingRoomRepository bookingRoomRepository;
+    private final com.hotel.backend.repository.RoomCalendarRepository roomCalendarRepository;
 
     public List<PublicHotelResponse> getAllActiveHotels(String keyword) {
         List<Hotel> hotels;
@@ -92,16 +94,94 @@ public class PublicHotelService {
                 ? rt.getImages().iterator().next().getImageUrl()
                 : null;
 
+        int totalRooms = rt.getTotalRooms() != null ? rt.getTotalRooms() : 10;
+        int activeBookings = 0;
+        try {
+            List<com.hotel.backend.model.BookingRoom> bookingRooms = bookingRoomRepository.findByRoomTypeId(rt.getId());
+            for (com.hotel.backend.model.BookingRoom br : bookingRooms) {
+                com.hotel.backend.model.Booking b = br.getBooking();
+                if (b != null && b.getStatus() != com.hotel.backend.model.Booking.BookingStatus.CANCELLED) {
+                    if (b.getCheckOut() != null && b.getCheckOut().isAfter(java.time.LocalDate.now())) {
+                        activeBookings += br.getQuantity() != null ? br.getQuantity() : 1;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        int availableRooms = Math.max(0, totalRooms - activeBookings);
+
+        String nextAvailable = null;
+        if (availableRooms == 0) {
+            nextAvailable = findNextAvailableDate(rt);
+        }
+
+        List<String> imageUrls = rt.getImages() != null ? rt.getImages().stream()
+                .sorted((a, b) -> {
+                    if (Boolean.TRUE.equals(a.getIsPrimary())) return -1;
+                    if (Boolean.TRUE.equals(b.getIsPrimary())) return 1;
+                    return 0;
+                })
+                .map(com.hotel.backend.model.RoomImage::getImageUrl)
+                .collect(Collectors.toList()) : List.of();
+
         return PublicRoomTypeResponse.builder()
                 .id(rt.getId())
                 .name(rt.getTypeName())
                 .capacity(rt.getMaxAdults() != null ? rt.getMaxAdults() : 2)
                 .size(rt.getRoomSize() != null ? rt.getRoomSize() + " m2" : "45 m2")
-                .bedType("King Bed") // Mock bed type as it's not in the model
+                .bedType("King Bed")
                 .price(rt.getBasePrice())
-                .features(List.of("City View", "Private Balcony")) // Mock features
+                .features(List.of("City View", "Private Balcony"))
                 .image(roomImage)
+                .imageUrls(imageUrls)
+                .description(rt.getDescription())
+                .availableRooms(availableRooms)
+                .nextAvailableDate(nextAvailable)
                 .build();
+    }
+
+    private String findNextAvailableDate(RoomType rt) {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        // Check RoomCalendar first
+        List<com.hotel.backend.model.RoomCalendar> calendars = 
+            roomCalendarRepository.findByRoomTypeIdAndDateGreaterThanEqualOrderByDateAsc(rt.getId(), today);
+        
+        java.util.Map<java.time.LocalDate, com.hotel.backend.model.RoomCalendar> calMap = calendars.stream()
+            .collect(Collectors.toMap(com.hotel.backend.model.RoomCalendar::getDate, c -> c));
+
+        // Scan next 30 days
+        for (int i = 0; i < 30; i++) {
+            java.time.LocalDate date = today.plusDays(i);
+            com.hotel.backend.model.RoomCalendar cal = calMap.get(date);
+            
+            int total = rt.getTotalRooms() != null ? rt.getTotalRooms() : 10;
+            int booked = 0;
+
+            if (cal != null) {
+                if (Boolean.FALSE.equals(cal.getIsAvailable())) continue;
+                total = cal.getTotalRooms() != null ? cal.getTotalRooms() : total;
+                booked = cal.getBookedRooms() != null ? cal.getBookedRooms() : 0;
+            } else {
+                // If not in calendar, check active bookings manually for this specific date
+                try {
+                    List<com.hotel.backend.model.BookingRoom> brs = bookingRoomRepository.findByRoomTypeId(rt.getId());
+                    for (com.hotel.backend.model.BookingRoom br : brs) {
+                        com.hotel.backend.model.Booking b = br.getBooking();
+                        if (b != null && b.getStatus() != com.hotel.backend.model.Booking.BookingStatus.CANCELLED) {
+                            if (!date.isBefore(b.getCheckIn()) && date.isBefore(b.getCheckOut())) {
+                                booked += br.getQuantity() != null ? br.getQuantity() : 1;
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            if (booked < total) {
+                return date.toString();
+            }
+        }
+        return "Liên hệ trực tiếp";
     }
 }
 

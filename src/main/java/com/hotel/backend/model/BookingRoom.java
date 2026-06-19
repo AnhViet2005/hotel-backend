@@ -19,10 +19,12 @@ public class BookingRoom {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "booking_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Booking booking;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_type_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private RoomType roomType;
 
     private Integer quantity;

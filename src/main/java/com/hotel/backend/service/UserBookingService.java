@@ -28,6 +28,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class UserBookingService {
 
     private final BookingRepository bookingRepository;
@@ -68,9 +69,10 @@ public class UserBookingService {
                 .multiply(BigDecimal.valueOf(request.getQuantity()))
                 .multiply(BigDecimal.valueOf(nights));
 
-        // Calculate revenue split: Admin 30%, Hotel Owner 70%
-        BigDecimal adminRevenue = total.multiply(new BigDecimal("0.30"));
-        BigDecimal hotelOwnerRevenue = total.multiply(new BigDecimal("0.70"));
+        // Calculate revenue split based on hotel configuration (default 30/70)
+        double depositPercent = (hotel.getDepositPercentage() != null ? hotel.getDepositPercentage() : 30) / 100.0;
+        BigDecimal adminRevenue = total.multiply(BigDecimal.valueOf(depositPercent));
+        BigDecimal hotelOwnerRevenue = total.subtract(adminRevenue);
 
         Booking booking = Booking.builder()
                 .bookingCode(generateBookingCode())
@@ -112,7 +114,19 @@ public class UserBookingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PENDING bookings can be confirmed");
         }
         booking.setStatus(Booking.BookingStatus.CONFIRMED);
-        bookingRepository.save(booking);
+        Booking saved = bookingRepository.save(booking);
+
+        // Gửi thông báo khi nhận cọc 30%
+        try {
+            if (saved.getHotel() != null && saved.getHotel().getOwner() != null) {
+                notificationService.notifyDepositReceived(
+                    saved.getId(),
+                    saved.getBookingCode(),
+                    saved.getAdminRevenue(),
+                    saved.getHotel().getOwner().getId()
+                );
+            }
+        } catch (Exception ignored) {}
     }
 
     // ──────────────────────────────────────────────
@@ -159,21 +173,51 @@ public class UserBookingService {
         booking.setRemainingPaidAt(LocalDateTime.now());
         bookingRepository.save(booking);
 
-        // Gửi thông báo đến chủ khách sạn
+        // Gửi thông báo đến chủ khách sạn (Thương lượng: thanh toán đủ)
         try {
             if (booking.getHotel() != null && booking.getHotel().getOwner() != null) {
-                BigDecimal remaining = booking.getTotalAmount() != null
-                        ? booking.getTotalAmount().multiply(new BigDecimal("0.7"))
-                        : BigDecimal.ZERO;
+                // Thông báo thanh toán nốt 70%
                 notificationService.notifyOwner(
                         booking.getHotel().getOwner().getId(),
                         booking.getId(),
                         booking.getBookingCode(),
-                        remaining);
+                        booking.getHotelOwnerRevenue());
+                
+                // Thông báo chung: Đã thanh toán ĐỦ 100%
+                notificationService.notifyFullPaymentReceived(
+                        booking.getId(),
+                        booking.getBookingCode(),
+                        booking.getTotalAmount(),
+                        booking.getHotel().getOwner().getId()
+                );
             }
-        } catch (Exception ignored) {
-            // Không để lỗi notification làm hỏng luồng chính
+        } catch (Exception ignored) {}
+
+        return toUserResponse(booking);
+    }
+
+    @Transactional
+    public UserBookingResponse cancelBooking(Long bookingId) {
+        User current = getCurrentUser();
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+
+        if (!booking.getUser().getId().equals(current.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền hủy đơn này");
         }
+
+        if (booking.getStatus() == Booking.BookingStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể hủy đơn đã hoàn tất");
+        }
+
+        if (booking.getStatus() == Booking.BookingStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đơn đã được hủy trước đó");
+        }
+
+        booking.setStatus(Booking.BookingStatus.CANCELLED);
+        booking.setAdminRevenue(BigDecimal.ZERO);
+        booking.setHotelOwnerRevenue(BigDecimal.ZERO);
+        bookingRepository.save(booking);
 
         return toUserResponse(booking);
     }
@@ -210,8 +254,8 @@ public class UserBookingService {
         } catch (Exception ignored) {}
 
         BigDecimal total = b.getTotalAmount() != null ? b.getTotalAmount() : BigDecimal.ZERO;
-        BigDecimal deposit = total.multiply(new BigDecimal("0.3"));
-        BigDecimal remaining = total.multiply(new BigDecimal("0.7"));
+        BigDecimal deposit = b.getAdminRevenue() != null ? b.getAdminRevenue() : total.multiply(new BigDecimal("0.3"));
+        BigDecimal remaining = b.getHotelOwnerRevenue() != null ? b.getHotelOwnerRevenue() : total.subtract(deposit);
 
         return UserBookingResponse.builder()
                 .id(b.getId())
@@ -228,6 +272,7 @@ public class UserBookingService {
                 .totalAmount(total)
                 .depositAmount(deposit)
                 .remainingAmount(remaining)
+                .depositPercentage(b.getHotel() != null && b.getHotel().getDepositPercentage() != null ? b.getHotel().getDepositPercentage() : 30)
                 .status(b.getStatus() != null ? b.getStatus().name() : "UNKNOWN")
                 .remainingPaymentStatus(b.getRemainingPaymentStatus() != null
                         ? b.getRemainingPaymentStatus().name() : "UNPAID")

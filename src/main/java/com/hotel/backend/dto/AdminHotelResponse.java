@@ -25,4 +25,5 @@ public class AdminHotelResponse {
     private String addressLine;
     private String phone;
     private String email;
+    private Integer depositPercentage;
 }

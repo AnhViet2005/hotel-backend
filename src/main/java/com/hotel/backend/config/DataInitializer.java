@@ -14,6 +14,7 @@ import java.time.LocalTime;
 import java.util.*;
 
 @Configuration
+@SuppressWarnings("null")
 public class DataInitializer implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
@@ -92,7 +93,7 @@ public class DataInitializer implements CommandLineRunner {
         Role customerRole = roleRepository.findByRoleName("CUSTOMER").orElseGet(() -> roleRepository.save(Role.builder().roleName("CUSTOMER").build()));
 
         // 2. Users
-        User admin = userRepository.save(User.builder()
+        userRepository.save(User.builder()
                 .fullName("Hệ thống Quản trị")
                 .email("admin@hotel.com")
                 .passwordHash(passwordEncoder.encode("admin123"))
@@ -101,7 +102,7 @@ public class DataInitializer implements CommandLineRunner {
                 .build());
 
         // Additional admin account
-        User admin2 = userRepository.save(User.builder()
+        userRepository.save(User.builder()
                 .fullName("Quản trị phụ")
                 .email("admin2@hotel.com")
                 .passwordHash(passwordEncoder.encode("admin456"))
@@ -151,7 +152,7 @@ public class DataInitializer implements CommandLineRunner {
                 "15 Ngô Quyền", "Hoàn Kiếm", "Tràng Tiền", "Hà Nội", "5.0", owner, amenities.subList(0, 8),
                 "https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80");
         
-        Hotel laperle = createHotel("Hanoi La Siesta Hotel & Spa",
+        createHotel("Hanoi La Siesta Hotel & Spa",
                 "Khách sạn boutique tinh tế tại Phố Cổ với dịch vụ spa đẳng cấp.",
                 "94 Mã Mây", "Hoàn Kiếm", "Hàng Buồm", "Hà Nội", "4.5", owner, amenities.subList(0, 5),
                 "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb");
@@ -218,7 +219,7 @@ public class DataInitializer implements CommandLineRunner {
                 "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b");
 
         // 5. Promotions
-        Promotion summerSale = promotionRepository.save(Promotion.builder()
+        promotionRepository.save(Promotion.builder()
                 .hotel(metropole)
                 .promoCode("SUMMER2024")
                 .discountPercent(new BigDecimal("15.00"))
@@ -249,7 +250,7 @@ public class DataInitializer implements CommandLineRunner {
         seedRooms(reverie, "Deluxe King Room", "Nội thất hoàng gia Ý.", 6500000, 2, 1, 15,
                 "https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1000");
         seedRooms(reverie, "Panorama Suite", "Tầm nhìn 360 độ ra sông Sài Gòn.", 18000000, 2, 2, 3,
-                "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=1000");
+                "https://images.unsplash.com/photo-1631049307264-q=80&w=1000");
 
         seedRooms(landmark81, "Premier Club", "Tầm nhìn từ độ cao ấn tượng.", 7500000, 2, 1, 20,
                 "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000");
@@ -308,27 +309,6 @@ public class DataInitializer implements CommandLineRunner {
                     .totalRevenue(new BigDecimal(5000000 + i * 1000000))
                     .build());
         }
-    }
-
-    private void cleanup() {
-        statisticsRepository.deleteAllInBatch();
-        paymentRepository.deleteAllInBatch();
-        reviewRepository.deleteAllInBatch();
-        bookingRoomRateRepository.deleteAllInBatch();
-        bookingRoomRepository.deleteAllInBatch();
-        bookingRepository.deleteAllInBatch();
-        favoriteRepository.deleteAllInBatch();
-        roomCalendarRepository.deleteAllInBatch();
-        roomImageRepository.deleteAllInBatch();
-        roomTypeRepository.deleteAllInBatch();
-        hotelImageRepository.deleteAllInBatch();
-        hotelPolicyRepository.deleteAllInBatch();
-        hotelAmenityRepository.deleteAllInBatch();
-        promotionRepository.deleteAllInBatch();
-        hotelRepository.deleteAllInBatch();
-        amenityRepository.deleteAllInBatch();
-        userRepository.deleteAllInBatch();
-        roleRepository.deleteAllInBatch();
     }
 
     private Hotel createHotel(String name, String desc, String addr, String dist, String ward, String city, String star, User owner, List<Amenity> hAmenities, String imageUrl) {

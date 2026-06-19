@@ -28,6 +28,7 @@ public class UserBookingResponse {
     private BigDecimal totalAmount;
     private BigDecimal depositAmount;
     private BigDecimal remainingAmount;
+    private Integer depositPercentage;
     private String status;
     private String remainingPaymentStatus;
     private String remainingPaymentMethod;

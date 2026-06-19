@@ -17,6 +17,7 @@ public class RoomImage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_type_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private RoomType roomType;
 
     @Column(name = "image_url", length = 500)

@@ -11,14 +11,46 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+
+    /** Gửi thông báo khi khách thanh toán cọc 30% */
+    @Transactional
+    public void notifyDepositReceived(Long bookingId, String bookingCode, java.math.BigDecimal amount, Long hotelOwnerId) {
+        // 1. Thông báo cho chủ khách sạn
+        User owner = userRepository.findById(hotelOwnerId).orElse(null);
+        if (owner != null) {
+            String ownerMsg = String.format("Phòng của bạn đã được đặt! Khách đã thanh toán cọc 30%% (%s ₫) cho đơn #%s.",
+                formatAmount(amount), bookingCode);
+            saveNotification(owner, ownerMsg, bookingId, bookingCode);
+        }
+
+        // 2. Thông báo cho Admin (vì Admin giữ 30% cọc)
+        userRepository.findAll().stream()
+            .filter(u -> u.getRole() != null && "ADMIN".equalsIgnoreCase(u.getRole().getRoleName()))
+            .forEach(admin -> {
+                String adminMsg = String.format("Hệ thống nhận được %s ₫ tiền cọc cho đơn hàng #%s.",
+                    formatAmount(amount), bookingCode);
+                saveNotification(admin, adminMsg, bookingId, bookingCode);
+            });
+    }
+
+    /** Gửi thông báo khi hoàn tất thanh toán 100% (sau khi khách thanh toán 70% còn lại) */
+    @Transactional
+    public void notifyFullPaymentReceived(Long bookingId, String bookingCode, java.math.BigDecimal amount, Long hotelOwnerId) {
+        User owner = userRepository.findById(hotelOwnerId).orElse(null);
+        if (owner != null) {
+            String msg = String.format("Tuyệt vời! Khách đã thanh toán đủ 100%% giá trị đơn hàng #%s (%s ₫).",
+                bookingCode, formatAmount(amount));
+            saveNotification(owner, msg, bookingId, bookingCode);
+        }
+    }
 
     /** Gửi thông báo đến chủ khách sạn (ownerId) khi khách thanh toán 70 % */
     @Transactional
@@ -27,18 +59,26 @@ public class NotificationService {
         if (owner == null) return;
 
         String msg = String.format(
-                "Khách đã thanh toán 70%% số dư (%.0f ₫) cho đơn đặt phòng #%s.",
-                remainingAmount, bookingCode);
+                "Khách đã thanh toán 70%% số dư (%s ₫) cho đơn đặt phòng #%s. Đơn hàng hiện đã hoàn tất thanh toán.",
+                formatAmount(remainingAmount), bookingCode);
 
+        saveNotification(owner, msg, bookingId, bookingCode);
+    }
+
+    private void saveNotification(User receiver, String message, Long bookingId, String bookingCode) {
         Notification notification = Notification.builder()
-                .receiver(owner)
-                .message(msg)
+                .receiver(receiver)
+                .message(message)
                 .bookingId(bookingId)
                 .bookingCode(bookingCode)
                 .isRead(false)
                 .build();
-
         notificationRepository.save(notification);
+    }
+
+    private String formatAmount(java.math.BigDecimal amount) {
+        if (amount == null) return "0";
+        return String.format("%,.0f", amount);
     }
 
     /** Lấy tất cả thông báo của owner */

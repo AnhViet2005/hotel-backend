@@ -49,6 +49,6 @@ public class RoomType {
     @OneToMany(mappedBy = "roomType", cascade = CascadeType.ALL)
     private Set<RoomCalendar> calendarDays;
 
-    @OneToMany(mappedBy = "roomType")
+    @OneToMany(mappedBy = "roomType", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<BookingRoom> bookingRooms;
 }

@@ -3,7 +3,6 @@ package com.hotel.backend.controller;
 import com.hotel.backend.dto.ReviewResponseDTO;
 import com.hotel.backend.model.User;
 import com.hotel.backend.service.ReviewService;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;

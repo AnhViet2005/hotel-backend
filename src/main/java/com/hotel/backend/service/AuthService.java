@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -56,6 +57,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .role("ADMIN")
+                .phone(user.getPhone())
                 .build();
     }
 
@@ -82,6 +84,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .role("USER")
+                .phone(user.getPhone())
                 .build();
     }
 
@@ -121,6 +124,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .role("OWNER")
+                .phone(user.getPhone())
                 .build();
     }
 
@@ -151,6 +155,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .role(user.getRole().getRoleName())
+                .phone(user.getPhone())
                 .build();
     }
 }

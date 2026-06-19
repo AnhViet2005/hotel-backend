@@ -23,5 +23,6 @@ public class AdminHotelRequest {
     private String email;
     private Boolean isActive;
     private BigDecimal basePrice;
+    private Integer depositPercentage;
     private String imageUrl; // For simplicity in this assignment, just one image URL
 }

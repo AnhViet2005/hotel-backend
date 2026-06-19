@@ -24,10 +24,12 @@ public class Booking {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hotel_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Hotel hotel;
 
     @Column(name = "guest_name")
