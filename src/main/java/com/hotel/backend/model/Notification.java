@@ -30,6 +30,9 @@ public class Notification {
     @Column(name = "booking_code", length = 50)
     private String bookingCode;
 
+    @Column(name = "type", length = 50)
+    private String type; // e.g., DEPOSIT_PAID, FULL_PAYMENT_PAID, NEW_BOOKING
+
     @Column(name = "is_read")
     @Builder.Default
     private Boolean isRead = false;

@@ -52,4 +52,39 @@ public class ReviewController {
         List<ReviewResponseDTO> list = reviewService.getReviewsByHotel(hotelId);
         return ResponseEntity.ok(list);
     }
+    
+    /** Get reviews for hotels owned by current owner */
+    @GetMapping("/owner")
+    public ResponseEntity<List<ReviewResponseDTO>> getOwnerReviews() {
+        User current = getCurrentUser();
+        List<ReviewResponseDTO> list = reviewService.getReviewsForOwner(current);
+        return ResponseEntity.ok(list);
+    }
+    
+    /** Owner: Reply to a review */
+    @PatchMapping("/{reviewId}/owner-reply")
+    public ResponseEntity<ReviewResponseDTO> ownerReply(
+            @PathVariable Long reviewId,
+            @RequestBody java.util.Map<String, String> body) {
+        User current = getCurrentUser();
+        String reply = body.getOrDefault("reply", "");
+        ReviewResponseDTO updated = reviewService.replyToReviewAsOwner(current, reviewId, reply);
+        return ResponseEntity.ok(updated);
+    }
+
+    /** Update a review (user side) */
+    @PutMapping("/{id}")
+    public ResponseEntity<ReviewResponseDTO> updateReview(@PathVariable Long id, @Valid @RequestBody ReviewRequestDTO request) {
+        User current = getCurrentUser();
+        ReviewResponseDTO response = reviewService.updateReview(current, id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /** Delete a review (user side) */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
+        User current = getCurrentUser();
+        reviewService.deleteByUser(current, id);
+        return ResponseEntity.noContent().build();
+    }
 }

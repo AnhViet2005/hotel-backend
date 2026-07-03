@@ -24,23 +24,23 @@ public class PublicHotelService {
     private final com.hotel.backend.repository.BookingRoomRepository bookingRoomRepository;
     private final com.hotel.backend.repository.RoomCalendarRepository roomCalendarRepository;
 
-    public List<PublicHotelResponse> getAllActiveHotels(String keyword) {
+    public List<PublicHotelResponse> getAllActiveHotels(String keyword, String checkIn, String checkOut) {
         List<Hotel> hotels;
         if (keyword != null && !keyword.isEmpty()) {
             hotels = hotelRepository.searchHotels(keyword);
         } else {
-            hotels = hotelRepository.findByIsActiveTrue();
+            hotels = hotelRepository.findByIsActiveTrueAndIsApprovedTrue();
         }
 
-        return hotels.stream().map(this::mapToPublicHotelResponse).collect(Collectors.toList());
+        return hotels.stream().map(h -> mapToPublicHotelResponse(h, checkIn, checkOut)).collect(Collectors.toList());
     }
 
-    public PublicHotelResponse getHotelById(Long id) {
+    public PublicHotelResponse getHotelById(Long id, String checkIn, String checkOut) {
         Hotel hotel = hotelRepository.findById(id).orElseThrow(() -> new RuntimeException("Hotel not found"));
-        return mapToPublicHotelResponse(hotel);
+        return mapToPublicHotelResponse(hotel, checkIn, checkOut);
     }
 
-    private PublicHotelResponse mapToPublicHotelResponse(Hotel hotel) {
+    private PublicHotelResponse mapToPublicHotelResponse(Hotel hotel, String checkIn, String checkOut) {
         java.util.Set<HotelImage> images = hotel.getImages() != null ? hotel.getImages() : java.util.Collections.emptySet();
         
         String primaryImage = images.stream()
@@ -54,7 +54,7 @@ public class PublicHotelService {
                 .collect(Collectors.toList());
 
         List<PublicRoomTypeResponse> roomTypes = roomTypeRepository.findByHotelId(hotel.getId()).stream()
-                .map(this::mapToPublicRoomTypeResponse)
+                .map(rt -> mapToPublicRoomTypeResponse(rt, checkIn, checkOut))
                 .collect(Collectors.toList());
 
         BigDecimal minPrice = hotel.getBasePrice();
@@ -86,30 +86,54 @@ public class PublicHotelService {
                 .description(hotel.getDescription())
                 .amenities(amenities)
                 .rooms(roomTypes)
+                .ownerId(hotel.getOwner() != null ? hotel.getOwner().getId() : null)
+                .ownerName(hotel.getOwner() != null ? hotel.getOwner().getFullName() : "Admin")
                 .build();
     }
 
-    private PublicRoomTypeResponse mapToPublicRoomTypeResponse(RoomType rt) {
+    private PublicRoomTypeResponse mapToPublicRoomTypeResponse(RoomType rt, String checkInStr, String checkOutStr) {
         String roomImage = rt.getImages() != null && !rt.getImages().isEmpty()
                 ? rt.getImages().iterator().next().getImageUrl()
                 : null;
 
+        java.time.LocalDate checkIn = (checkInStr != null && !checkInStr.isEmpty()) ? java.time.LocalDate.parse(checkInStr) : java.time.LocalDate.now();
+        java.time.LocalDate checkOut = (checkOutStr != null && !checkOutStr.isEmpty()) ? java.time.LocalDate.parse(checkOutStr) : checkIn.plusDays(1);
+
         int totalRooms = rt.getTotalRooms() != null ? rt.getTotalRooms() : 10;
-        int activeBookings = 0;
-        try {
-            List<com.hotel.backend.model.BookingRoom> bookingRooms = bookingRoomRepository.findByRoomTypeId(rt.getId());
-            for (com.hotel.backend.model.BookingRoom br : bookingRooms) {
-                com.hotel.backend.model.Booking b = br.getBooking();
-                if (b != null && b.getStatus() != com.hotel.backend.model.Booking.BookingStatus.CANCELLED) {
-                    if (b.getCheckOut() != null && b.getCheckOut().isAfter(java.time.LocalDate.now())) {
-                        activeBookings += br.getQuantity() != null ? br.getQuantity() : 1;
-                    }
+        int maxBookedInPeriod = 0;
+
+        // Check availability strictly for the requested period
+        for (java.time.LocalDate date = checkIn; date.isBefore(checkOut); date = date.plusDays(1)) {
+            int bookedOnDate = 0;
+            // 1. Check override in RoomCalendar
+            java.util.Optional<com.hotel.backend.model.RoomCalendar> calOpt = 
+                roomCalendarRepository.findByRoomTypeIdAndDate(rt.getId(), date);
+            
+            if (calOpt.isPresent()) {
+                com.hotel.backend.model.RoomCalendar cal = calOpt.get();
+                if (Boolean.FALSE.equals(cal.getIsAvailable())) {
+                    bookedOnDate = totalRooms; // Consider full if closed
+                } else {
+                    bookedOnDate = cal.getBookedRooms() != null ? cal.getBookedRooms() : 0;
                 }
+            } else {
+                // 2. Fallback to manual booking check
+                try {
+                    List<com.hotel.backend.model.BookingRoom> brs = bookingRoomRepository.findByRoomTypeId(rt.getId());
+                    for (com.hotel.backend.model.BookingRoom br : brs) {
+                        com.hotel.backend.model.Booking b = br.getBooking();
+                        if (b != null && b.getStatus() != com.hotel.backend.model.Booking.BookingStatus.CANCELLED) {
+                            if (!date.isBefore(b.getCheckIn()) && date.isBefore(b.getCheckOut())) {
+                                bookedOnDate += br.getQuantity() != null ? br.getQuantity() : 1;
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
             }
-        } catch (Exception e) {
-            // Ignore
+            maxBookedInPeriod = Math.max(maxBookedInPeriod, bookedOnDate);
         }
-        int availableRooms = Math.max(0, totalRooms - activeBookings);
+
+        int availableRooms = Math.max(0, totalRooms - maxBookedInPeriod);
 
         String nextAvailable = null;
         if (availableRooms == 0) {

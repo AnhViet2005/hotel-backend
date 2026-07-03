@@ -42,7 +42,9 @@ public class AdminRoomTypeController {
     }
 
     private boolean isAdmin(User user) {
-        return user.getRole() != null && "ADMIN".equalsIgnoreCase(user.getRole().getRoleName());
+        if (user.getRole() == null) return false;
+        String role = user.getRole().getRoleName();
+        return "ADMIN".equalsIgnoreCase(role) || "HỆ THỐNG".equalsIgnoreCase(role);
     }
 
     @GetMapping("/hotels/{hotelId}/room-types")
@@ -64,8 +66,11 @@ public class AdminRoomTypeController {
         User current = getCurrentUser();
         Hotel hotel = hotelRepository.findById(hotelId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khách sạn."));
-        if (!isAdmin(current) && (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId()))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền thêm loại phòng cho khách sạn này.");
+        if (isAdmin(current)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin chỉ có quyền xóa, không có quyền thêm phòng.");
+        }
+        if (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không phải chủ khách sạn này.");
         }
         
         RoomType roomType = RoomType.builder()
@@ -109,8 +114,11 @@ public class AdminRoomTypeController {
         if (hotel == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Loại phòng không liên kết với khách sạn nào.");
         }
-        if (!isAdmin(current) && (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId()))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền cập nhật loại phòng của khách sạn này.");
+        if (isAdmin(current)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin chỉ có quyền xóa, không có quyền sửa phòng.");
+        }
+        if (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền cập nhật loại phòng của khách sạn này.");
         }
         
         if (request.getTypeName() != null) roomType.setTypeName(request.getTypeName());
@@ -150,8 +158,11 @@ public class AdminRoomTypeController {
         
         Hotel hotel = roomType.getHotel();
         if (hotel != null) {
-            if (!isAdmin(current) && (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId()))) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền xóa loại phòng của khách sạn này.");
+            if (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId())) {
+                // Cho phép nếu là Admin
+                if (!isAdmin(current)) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xóa loại phòng của khách sạn này.");
+                }
             }
         }
         

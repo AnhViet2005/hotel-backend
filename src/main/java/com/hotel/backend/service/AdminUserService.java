@@ -40,6 +40,37 @@ public class AdminUserService {
         return users.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    /** Lấy danh sách khách hàng đã từng đặt phòng tại các khách sạn của chủ sở hữu này */
+    public List<AdminUserResponse> getUsersForOwner(Long ownerId) {
+        // 1. Lấy những người dùng có tài khoản User chính thức
+        String jpqlUsers = "SELECT DISTINCT b.user FROM Booking b WHERE b.hotel.owner.id = :ownerId AND b.user IS NOT NULL";
+        List<User> registeredUsers = entityManager.createQuery(jpqlUsers, User.class)
+                .setParameter("ownerId", ownerId)
+                .getResultList();
+        
+        List<AdminUserResponse> result = registeredUsers.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+
+        // 2. Lấy những khách hàng đặt phòng (có thể là khách vãng lai không có user_id)
+        String jpqlGuests = "SELECT DISTINCT b.guestName, b.guestEmail, b.guestPhone FROM Booking b WHERE b.hotel.owner.id = :ownerId AND b.user IS NULL";
+        List<Object[]> guests = entityManager.createQuery(jpqlGuests, Object[].class)
+                .setParameter("ownerId", ownerId)
+                .getResultList();
+
+        for (Object[] guest : guests) {
+            result.add(AdminUserResponse.builder()
+                    .fullName((String) guest[0])
+                    .email((String) guest[1])
+                    .phone((String) guest[2])
+                    .role("GUEST")
+                    .isActive(true)
+                    .build());
+        }
+        
+        return result;
+    }
+
     @Transactional
     public AdminUserResponse toggleStatus(Long id) {
         User user = userRepository.findById(id)

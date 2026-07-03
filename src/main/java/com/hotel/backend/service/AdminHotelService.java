@@ -5,12 +5,10 @@ import com.hotel.backend.dto.AdminHotelResponse;
 import com.hotel.backend.model.Hotel;
 import com.hotel.backend.model.HotelImage;
 import com.hotel.backend.model.User;
-import com.hotel.backend.repository.HotelImageRepository;
 import com.hotel.backend.repository.HotelRepository;
 import com.hotel.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,23 +24,18 @@ import java.util.stream.Collectors;
 public class AdminHotelService {
 
     private final HotelRepository hotelRepository;
-    private final HotelImageRepository hotelImageRepository;
     private final UserRepository userRepository;
 
-    // Helper to get current authenticated user
     private User getCurrentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getPrincipal() == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
-        }
-        String email = auth.getName(); // assuming username is email
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Người dùng không tồn tại."));
     }
 
-    // Helper to check if user is admin
     private boolean isAdmin(User user) {
-        return user.getRole() != null && "ADMIN".equalsIgnoreCase(user.getRole().getRoleName());
+        if (user.getRole() == null) return false;
+        String role = user.getRole().getRoleName();
+        return "ADMIN".equalsIgnoreCase(role) || "HỆ THỐNG".equalsIgnoreCase(role);
     }
 
     public List<AdminHotelResponse> getAll(String keyword) {
@@ -53,7 +46,7 @@ public class AdminHotelService {
         } else {
             hotels = hotelRepository.findAll();
         }
-        // If not admin, filter to hotels owned by the user
+        
         if (!isAdmin(current)) {
             hotels = hotels.stream()
                     .filter(h -> h.getOwner() != null && h.getOwner().getId().equals(current.getId()))
@@ -75,66 +68,50 @@ public class AdminHotelService {
     @Transactional
     public AdminHotelResponse create(AdminHotelRequest request) {
         User current = getCurrentUser();
-        // Only admin can create any hotel; owners can create only their own
+        if (isAdmin(current)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin chỉ có quyền xóa, không có quyền thêm mới khách sạn.");
+        }
         Hotel hotel = Hotel.builder()
                 .hotelName(request.getName())
                 .description(request.getDescription())
                 .addressLine(request.getAddressLine())
                 .city(request.getCity())
                 .district(request.getDistrict())
-                .ward(request.getWard())
-                .starRating(request.getRating())
                 .phone(request.getPhone())
                 .email(request.getEmail())
-                .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+                .starRating(request.getRating())
                 .basePrice(request.getBasePrice())
-                .depositPercentage(request.getDepositPercentage() != null ? request.getDepositPercentage() : 30)
+                .depositPercentage(request.getDepositPercentage())
+                .isActive(true)
+                .owner(current)
                 .build();
-        // Set owner
-        if (isAdmin(current)) {
-            // If admin provides ownerId in request (optional), you could set here. For now, keep null.
-        } else {
-            hotel.setOwner(current);
-        }
-        hotel = hotelRepository.save(hotel);
-        if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
-            HotelImage img = HotelImage.builder()
-                    .hotel(hotel)
-                    .imageUrl(request.getImageUrl())
-                    .isPrimary(true)
-                    .build();
-            hotelImageRepository.save(img);
-        }
-        return toResponse(hotel);
+        return toResponse(hotelRepository.save(hotel));
     }
 
     @Transactional
     public AdminHotelResponse update(Long id, AdminHotelRequest request) {
         User current = getCurrentUser();
+        if (isAdmin(current)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin chỉ có quyền xóa, không có quyền sửa đổi thông tin khách sạn.");
+        }
         Hotel hotel = hotelRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khách sạn."));
+        
         if (!isAdmin(current) && (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId()))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền cập nhật khách sạn này.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền sửa khách sạn này.");
         }
-        // Apply updates (same as before)
-        if (request.getName() != null) hotel.setHotelName(request.getName());
-        if (request.getDescription() != null) hotel.setDescription(request.getDescription());
-        if (request.getAddressLine() != null) hotel.setAddressLine(request.getAddressLine());
-        if (request.getCity() != null) hotel.setCity(request.getCity());
-        if (request.getDistrict() != null) hotel.setDistrict(request.getDistrict());
-        if (request.getWard() != null) hotel.setWard(request.getWard());
-        if (request.getRating() != null) hotel.setStarRating(request.getRating());
-        if (request.getPhone() != null) hotel.setPhone(request.getPhone());
-        if (request.getEmail() != null) hotel.setEmail(request.getEmail());
-        if (request.getIsActive() != null) hotel.setIsActive(request.getIsActive());
-        if (request.getBasePrice() != null) hotel.setBasePrice(request.getBasePrice());
-        if (request.getDepositPercentage() != null) hotel.setDepositPercentage(request.getDepositPercentage());
-        if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
-            hotelImageRepository.findPrimaryByHotelId(id).ifPresentOrElse(
-                    img -> { img.setImageUrl(request.getImageUrl()); hotelImageRepository.save(img); },
-                    () -> hotelImageRepository.save(HotelImage.builder().hotel(hotel).imageUrl(request.getImageUrl()).isPrimary(true).build())
-            );
-        }
+
+        hotel.setHotelName(request.getName());
+        hotel.setDescription(request.getDescription());
+        hotel.setAddressLine(request.getAddressLine());
+        hotel.setCity(request.getCity());
+        hotel.setDistrict(request.getDistrict());
+        hotel.setPhone(request.getPhone());
+        hotel.setEmail(request.getEmail());
+        hotel.setStarRating(request.getRating());
+        hotel.setBasePrice(request.getBasePrice());
+        hotel.setDepositPercentage(request.getDepositPercentage());
+        
         return toResponse(hotelRepository.save(hotel));
     }
 
@@ -143,9 +120,11 @@ public class AdminHotelService {
         User current = getCurrentUser();
         Hotel hotel = hotelRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khách sạn."));
+        
         if (!isAdmin(current) && (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId()))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền xóa khách sạn này.");
         }
+
         hotel.setIsActive(false);
         hotelRepository.save(hotel);
     }
@@ -155,19 +134,33 @@ public class AdminHotelService {
         User current = getCurrentUser();
         Hotel hotel = hotelRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khách sạn."));
-        if (!isAdmin(current) && (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId()))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền xóa vĩnh viễn khách sạn này.");
+        
+        if (!isAdmin(current)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ Quản trị viên hệ thống mới có quyền xóa vĩnh viễn.");
         }
-        hotelRepository.deleteById(id);
+
+        hotelRepository.delete(hotel);
+    }
+
+    @Transactional
+    public AdminHotelResponse approveHotel(Long id) {
+        User current = getCurrentUser();
+        if (!isAdmin(current)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ Quản trị viên mới có quyền phê duyệt khách sạn.");
+        }
+        
+        Hotel hotel = hotelRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khách sạn."));
+        
+        hotel.setIsApproved(true);
+        hotel.setIsActive(true); // Đảm bảo khi duyệt xong thì khách sạn cũng ở trạng thái hoạt động
+        
+        return toResponse(hotelRepository.save(hotel));
     }
 
     private AdminHotelResponse toResponse(Hotel hotel) {
-        String imageUrl = hotel.getImages() != null
-                ? hotel.getImages().stream()
-                        .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
-                        .map(HotelImage::getImageUrl)
-                        .findFirst()
-                        .orElse(null)
+        String imageUrl = hotel.getImages() != null && !hotel.getImages().isEmpty()
+                ? hotel.getImages().iterator().next().getImageUrl()
                 : null;
         int totalRooms = hotel.getRoomTypes() != null
                 ? hotel.getRoomTypes().stream().mapToInt(rt -> rt.getTotalRooms() != null ? rt.getTotalRooms() : 0).sum()
@@ -200,6 +193,7 @@ public class AdminHotelService {
                 .phone(hotel.getPhone())
                 .email(hotel.getEmail())
                 .depositPercentage(hotel.getDepositPercentage() != null ? hotel.getDepositPercentage() : 30)
+                .isApproved(hotel.getIsApproved())
                 .build();
     }
 }

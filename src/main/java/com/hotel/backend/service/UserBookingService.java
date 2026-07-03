@@ -37,6 +37,7 @@ public class UserBookingService {
     private final RoomTypeRepository roomTypeRepository;
     private final BookingRoomRepository bookingRoomRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     // ──────────────────────────────────────────────
     // Helper: get current authenticated user
@@ -58,22 +59,21 @@ public class UserBookingService {
         Hotel hotel = hotelRepository.findById(request.getHotelId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Hotel not found"));
 
-        RoomType roomType = roomTypeRepository.findById(request.getRoomTypeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room type not found"));
-
         long nights = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
         if (nights <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Check-out phải sau Check-in");
 
-        BigDecimal pricePerNight = roomType.getBasePrice();
-        BigDecimal total = pricePerNight
-                .multiply(BigDecimal.valueOf(request.getQuantity()))
-                .multiply(BigDecimal.valueOf(nights));
+        BigDecimal roomTotal = BigDecimal.ZERO;
+        java.util.List<com.hotel.backend.dto.RoomSelection> selections = request.getRooms();
 
-        // Calculate revenue split based on hotel configuration (default 30/70)
-        double depositPercent = (hotel.getDepositPercentage() != null ? hotel.getDepositPercentage() : 30) / 100.0;
-        BigDecimal adminRevenue = total.multiply(BigDecimal.valueOf(depositPercent));
-        BigDecimal hotelOwnerRevenue = total.subtract(adminRevenue);
+        // If no rooms list provided, fall back to legacy single room logic
+        if (selections == null || selections.isEmpty()) {
+            if (request.getRoomTypeId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No rooms selected");
+            }
+            selections = java.util.List.of(new com.hotel.backend.dto.RoomSelection(request.getRoomTypeId(), request.getQuantity() != null ? request.getQuantity() : 1));
+        }
 
+        // Create the booking record first (we'll update total later or calculate first)
         Booking booking = Booking.builder()
                 .bookingCode(generateBookingCode())
                 .user(user)
@@ -83,22 +83,50 @@ public class UserBookingService {
                 .guestPhone(request.getGuestPhone())
                 .checkIn(request.getCheckIn())
                 .checkOut(request.getCheckOut())
-                .subtotal(total)
-                .totalAmount(total)
-                .adminRevenue(adminRevenue)
-                .hotelOwnerRevenue(hotelOwnerRevenue)
                 .status(Booking.BookingStatus.PENDING)
                 .remainingPaymentStatus(Booking.RemainingPaymentStatus.UNPAID)
                 .build();
 
         Booking saved = bookingRepository.save(booking);
 
-        bookingRoomRepository.save(BookingRoom.builder()
-                .booking(saved)
-                .roomType(roomType)
-                .quantity(request.getQuantity())
-                .pricePerNight(pricePerNight)
-                .build());
+        // Process each selected room
+        for (com.hotel.backend.dto.RoomSelection selection : selections) {
+            RoomType rt = roomTypeRepository.findById(selection.getRoomTypeId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room type not found: " + selection.getRoomTypeId()));
+
+            BigDecimal itemPrice = rt.getBasePrice();
+            BigDecimal itemTotal = itemPrice
+                    .multiply(BigDecimal.valueOf(selection.getQuantity()))
+                    .multiply(BigDecimal.valueOf(nights));
+            
+            roomTotal = roomTotal.add(itemTotal);
+
+            bookingRoomRepository.save(BookingRoom.builder()
+                    .booking(saved)
+                    .roomType(rt)
+                    .quantity(selection.getQuantity())
+                    .pricePerNight(itemPrice)
+                    .build());
+        }
+        
+        // Cộng thêm thuế & phí dịch vụ (100,000 VND)
+        BigDecimal taxesAndFees = new BigDecimal("100000");
+        BigDecimal total = roomTotal.add(taxesAndFees);
+
+        // Calculate revenue split based on hotel configuration (default 30/70)
+        double depositPercent = (hotel.getDepositPercentage() != null ? hotel.getDepositPercentage() : 30) / 100.0;
+        BigDecimal adminRevenue = total.multiply(BigDecimal.valueOf(depositPercent));
+        BigDecimal hotelOwnerRevenue = total.subtract(adminRevenue);
+
+        saved.setSubtotal(total);
+        saved.setTotalAmount(total);
+        saved.setAdminRevenue(adminRevenue);
+        saved.setHotelOwnerRevenue(hotelOwnerRevenue);
+        
+        bookingRepository.save(saved);
+        
+        // Thông báo cho khách hàng: Bạn đã gửi đơn đặt phòng thành công
+        notificationService.notifyBookingCreated(saved);
 
         return saved.getId();
     }
@@ -116,17 +144,22 @@ public class UserBookingService {
         booking.setStatus(Booking.BookingStatus.CONFIRMED);
         Booking saved = bookingRepository.save(booking);
 
-        // Gửi thông báo khi nhận cọc 30%
-        try {
-            if (saved.getHotel() != null && saved.getHotel().getOwner() != null) {
-                notificationService.notifyDepositReceived(
-                    saved.getId(),
-                    saved.getBookingCode(),
-                    saved.getAdminRevenue(),
-                    saved.getHotel().getOwner().getId()
-                );
-            }
-        } catch (Exception ignored) {}
+        // Gửi thông báo cho khách hàng khi đơn đã được xác nhận (nhận cọc 30%)
+        notificationService.notifyBookingConfirmed(saved);
+
+        // Gửi thông báo cho chủ khách sạn khi nhận cọc 30%
+        if (saved.getHotel() != null) {
+            Long ownerId = saved.getHotel().getOwner() != null ? saved.getHotel().getOwner().getId() : null;
+            notificationService.notifyDepositReceived(
+                saved.getId(),
+                saved.getBookingCode(),
+                saved.getAdminRevenue(),
+                ownerId
+            );
+        }
+
+        // Gửi email xác nhận đặt phòng thật
+        emailService.sendBookingConfirmationEmail(saved);
     }
 
     // ──────────────────────────────────────────────
@@ -173,25 +206,16 @@ public class UserBookingService {
         booking.setRemainingPaidAt(LocalDateTime.now());
         bookingRepository.save(booking);
 
-        // Gửi thông báo đến chủ khách sạn (Thương lượng: thanh toán đủ)
-        try {
-            if (booking.getHotel() != null && booking.getHotel().getOwner() != null) {
-                // Thông báo thanh toán nốt 70%
-                notificationService.notifyOwner(
-                        booking.getHotel().getOwner().getId(),
-                        booking.getId(),
-                        booking.getBookingCode(),
-                        booking.getHotelOwnerRevenue());
-                
-                // Thông báo chung: Đã thanh toán ĐỦ 100%
-                notificationService.notifyFullPaymentReceived(
-                        booking.getId(),
-                        booking.getBookingCode(),
-                        booking.getTotalAmount(),
-                        booking.getHotel().getOwner().getId()
-                );
-            }
-        } catch (Exception ignored) {}
+        // Gửi thông báo đến chủ khách sạn cho admin
+        if (booking.getHotel() != null) {
+            Long ownerId = booking.getHotel().getOwner() != null ? booking.getHotel().getOwner().getId() : null;
+            notificationService.notifyFullPaymentReceived(
+                booking.getId(),
+                booking.getBookingCode(),
+                booking.getTotalAmount(),
+                ownerId
+            );
+        }
 
         return toUserResponse(booking);
     }

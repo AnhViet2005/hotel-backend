@@ -25,4 +25,6 @@ public class PublicHotelResponse {
     private String description;
     private List<String> amenities;
     private List<PublicRoomTypeResponse> rooms;
+    private Long ownerId;
+    private String ownerName;
 }

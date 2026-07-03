@@ -40,7 +40,9 @@ public class AdminBookingService {
     }
 
     private boolean isAdmin(User user) {
-        return user.getRole() != null && "ADMIN".equalsIgnoreCase(user.getRole().getRoleName());
+        if (user.getRole() == null) return false;
+        String role = user.getRole().getRoleName();
+        return "ADMIN".equalsIgnoreCase(role) || "HỆ THỐNG".equalsIgnoreCase(role);
     }
 
     private boolean isOwnerOfBooking(Booking b, Long ownerId) {
@@ -69,11 +71,13 @@ public class AdminBookingService {
     // Get All Bookings
     // ──────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public List<AdminBookingResponse> getAll(String keyword, String status) {
         User current = getCurrentUser();
         List<Booking> bookings = bookingRepository.findAll();
 
-        if (!isAdmin(current)) {
+        boolean admin = isAdmin(current);
+        if (!admin) {
             bookings = bookings.stream()
                     .filter(b -> isOwnerOfBooking(b, current.getId()))
                     .collect(Collectors.toList());
@@ -127,22 +131,36 @@ public class AdminBookingService {
         }
 
         Booking saved = bookingRepository.save(booking);
-        // Gửi thông báo khi Admin cập nhật trạng thái (để xử lý TH thanh toán tiền mặt)
+        // Gửi thông báo cho khách hàng và Admin/Chủ khách sạn
         try {
-            if (saved.getHotel() != null && saved.getHotel().getOwner() != null) {
+            // 1. Thông báo cho khách hàng khi Admin thay đổi trạng thái
+            if (saved.getStatus() == Booking.BookingStatus.CONFIRMED) {
+                notificationService.notifyBookingConfirmed(saved);
+            } else if (saved.getStatus() == Booking.BookingStatus.CANCELLED) {
+                notificationService.notifyBookingCancelled(saved, "Admin đã cập nhật trạng thái đơn hàng.");
+            } else if (saved.getStatus() == Booking.BookingStatus.COMPLETED) {
+                notificationService.sendToUser(saved.getUser(), 
+                    String.format("Đơn hàng #%s tại %s đã hoàn tất. Cảm ơn bạn đã sử dụng dịch vụ!", 
+                        saved.getBookingCode(), saved.getHotel().getHotelName()),
+                    saved.getId(), saved.getBookingCode(), "BOOKING_COMPLETED");
+            }
+
+            // 2. Thông báo cho Admin/Chủ khách sạn (giữ nguyên logic cũ)
+            if (saved.getHotel() != null) {
+                Long ownerId = saved.getHotel().getOwner() != null ? saved.getHotel().getOwner().getId() : null;
                 if (saved.getStatus() == Booking.BookingStatus.CONFIRMED) {
                     notificationService.notifyDepositReceived(
                         saved.getId(),
                         saved.getBookingCode(),
                         saved.getAdminRevenue(),
-                        saved.getHotel().getOwner().getId()
+                        ownerId
                     );
                 } else if (saved.getStatus() == Booking.BookingStatus.COMPLETED) {
                     notificationService.notifyFullPaymentReceived(
                         saved.getId(),
                         saved.getBookingCode(),
                         saved.getTotalAmount(),
-                        saved.getHotel().getOwner().getId()
+                        ownerId
                     );
                 }
             }

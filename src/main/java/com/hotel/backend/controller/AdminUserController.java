@@ -23,7 +23,7 @@ public class AdminUserController {
     private final AdminUserService adminUserService;
     private final UserRepository userRepository;
 
-    private void checkAdmin() {
+    private User ensureAdminOrOwner() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getPrincipal() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
@@ -31,8 +31,16 @@ public class AdminUserController {
         String email = auth.getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
-        if (user.getRole() == null || !"ADMIN".equalsIgnoreCase(user.getRole().getRoleName())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ Quản trị viên hệ thống mới có quyền truy cập chức năng này.");
+        if (user.getRole() == null || (!"ADMIN".equalsIgnoreCase(user.getRole().getRoleName()) && !"OWNER".equalsIgnoreCase(user.getRole().getRoleName()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền truy cập chức năng này.");
+        }
+        return user;
+    }
+
+    private void ensureAdmin() {
+        User user = ensureAdminOrOwner();
+        if (!"ADMIN".equalsIgnoreCase(user.getRole().getRoleName())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Thao tác này chỉ dành cho Quản trị viên hệ thống.");
         }
     }
 
@@ -40,19 +48,19 @@ public class AdminUserController {
     public ResponseEntity<List<AdminUserResponse>> getAll(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String role) {
-        checkAdmin();
+        ensureAdmin();
         return ResponseEntity.ok(adminUserService.getAll(keyword, role));
     }
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<AdminUserResponse> toggleStatus(@PathVariable Long id) {
-        checkAdmin();
+        ensureAdmin();
         return ResponseEntity.ok(adminUserService.toggleStatus(id));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        checkAdmin();
+        ensureAdmin();
         adminUserService.delete(id);
         return ResponseEntity.noContent().build();
     }
@@ -60,8 +68,13 @@ public class AdminUserController {
     // Thêm phương thức POST để xóa nếu DELETE bị chặn
     @PostMapping("/{id}/delete")
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {
-        checkAdmin();
+        ensureAdmin();
         adminUserService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+    @GetMapping("/my-customers")
+    public ResponseEntity<List<AdminUserResponse>> getMyCustomers() {
+        User user = ensureAdminOrOwner();
+        return ResponseEntity.ok(adminUserService.getUsersForOwner(user.getId()));
     }
 }

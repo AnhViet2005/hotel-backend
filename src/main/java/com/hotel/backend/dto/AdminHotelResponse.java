@@ -26,4 +26,5 @@ public class AdminHotelResponse {
     private String phone;
     private String email;
     private Integer depositPercentage;
+    private Boolean isApproved;
 }

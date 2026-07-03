@@ -23,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
@@ -44,9 +45,15 @@ public class SecurityConfig {
                     "/api/rooms/**",
                     "/api/reviews/hotel/**",
                     "/uploads/**",
-                    "/error"
+                    "/error",
+                    "/oauth2/**",
+                    "/login/oauth2/**",
+                    "/ws/**"
                 ).permitAll()
                 .anyRequest().authenticated()
+            )
+            .oauth2Login(oauth2 -> oauth2
+                .successHandler(oauth2SuccessHandler)
             )
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())

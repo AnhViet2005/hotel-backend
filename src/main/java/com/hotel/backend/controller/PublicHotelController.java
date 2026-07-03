@@ -17,12 +17,17 @@ public class PublicHotelController {
 
     @GetMapping
     public ResponseEntity<List<PublicHotelResponse>> getAllHotels(
-            @RequestParam(required = false) String keyword) {
-        return ResponseEntity.ok(publicHotelService.getAllActiveHotels(keyword));
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String checkIn,
+            @RequestParam(required = false) String checkOut) {
+        return ResponseEntity.ok(publicHotelService.getAllActiveHotels(keyword, checkIn, checkOut));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PublicHotelResponse> getHotelById(@PathVariable Long id) {
-        return ResponseEntity.ok(publicHotelService.getHotelById(id));
+    public ResponseEntity<PublicHotelResponse> getHotelById(
+            @PathVariable Long id,
+            @RequestParam(required = false) String checkIn,
+            @RequestParam(required = false) String checkOut) {
+        return ResponseEntity.ok(publicHotelService.getHotelById(id, checkIn, checkOut));
     }
 }

@@ -38,7 +38,9 @@ public class AdminReviewController {
 
     /** Helper to verify admin role */
     private boolean isAdmin(User user) {
-        return user.getRole() != null && "ADMIN".equalsIgnoreCase(user.getRole().getRoleName());
+        if (user.getRole() == null) return false;
+        String role = user.getRole().getRoleName();
+        return "ADMIN".equalsIgnoreCase(role) || "HỆ THỐNG".equalsIgnoreCase(role);
     }
 
     /** Get all reviews (admin) */

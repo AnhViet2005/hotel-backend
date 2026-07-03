@@ -12,6 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/hotels")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class AdminHotelController {
 
     private final AdminHotelService adminHotelService;
@@ -47,5 +48,11 @@ public class AdminHotelController {
             adminHotelService.delete(id);
         }
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<AdminHotelResponse> approve(@PathVariable Long id) {
+        System.out.println("DEBUG: Approve request for hotel ID: " + id);
+        return ResponseEntity.ok(adminHotelService.approveHotel(id));
     }
 }

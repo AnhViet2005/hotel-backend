@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,17 @@ public class NotificationController {
     private User getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow();
+    }
+
+
+    @GetMapping("/test-notify")
+    public ResponseEntity<String> testNotify(@AuthenticationPrincipal UserDetails userDetails) {
+        User current = userRepository.findByEmail(userDetails.getUsername()).orElse(null);
+        if (current != null) {
+            notificationService.saveNotification(current, "🔔 THÔNG BÁO THỬ NGHIỆM: Hệ thống đã kết nối thành công!", null, "TEST-123", "DEPOSIT_PAID");
+            return ResponseEntity.ok("Đã gửi thông báo thử nghiệm đến " + current.getEmail());
+        }
+        return ResponseEntity.status(404).body("Không tìm thấy user");
     }
 
     @GetMapping
@@ -60,6 +72,7 @@ public class NotificationController {
                 .message(n.getMessage())
                 .bookingId(n.getBookingId())
                 .bookingCode(n.getBookingCode())
+                .type(n.getType())
                 .isRead(n.getIsRead())
                 .createdAt(n.getCreatedAt())
                 .build();

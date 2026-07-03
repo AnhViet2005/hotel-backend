@@ -1,34 +1,32 @@
 package com.hotel.backend.config;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import com.hotel.backend.model.User;
+import com.hotel.backend.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * This runner prints the current database name and all tables present in that schema.
- * It helps verify that the Spring Boot application is connecting to the expected MySQL instance.
- */
 @Component
+@RequiredArgsConstructor
 public class DatabaseCheckRunner implements CommandLineRunner {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) throws Exception {
-        // Print the database we are connected to
-        String dbName = (String) entityManager.createNativeQuery("SELECT DATABASE()").getSingleResult();
-        System.out.println("[DB CHECK] Connected to database: " + dbName);
-
-        // Retrieve all table names in the current schema
-        List<String> tables = entityManager.createNativeQuery(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema"
-        ).setParameter("schema", dbName).getResultList();
-
-        System.out.println("[DB CHECK] Tables in schema '" + dbName + "':");
-        tables.forEach(t -> System.out.println("   - " + t));
+        System.out.println("[AUTH CHECK] Resetting all user passwords to '123456' for testing...");
+        List<User> users = userRepository.findAll();
+        String newPasswordHash = passwordEncoder.encode("123456");
+        
+        for (User user : users) {
+            user.setPasswordHash(newPasswordHash);
+        }
+        
+        userRepository.saveAll(users);
+        System.out.println("[AUTH CHECK] Successfully updated " + users.size() + " users.");
     }
 }

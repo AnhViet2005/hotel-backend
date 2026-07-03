@@ -8,7 +8,6 @@ import jakarta.validation.constraints.NotNull;
  * DTO used when a user submits a review for a hotel.
  */
 public record ReviewRequestDTO(
-        @NotNull(message = "Booking ID is required")
         Long bookingId,
 
         String comment,

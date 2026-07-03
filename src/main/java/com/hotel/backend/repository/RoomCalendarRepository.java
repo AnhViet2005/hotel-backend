@@ -8,4 +8,5 @@ import java.util.List;
 public interface RoomCalendarRepository extends JpaRepository<RoomCalendar, Long> {
     List<RoomCalendar> findByRoomTypeIdAndDateBetween(Long roomTypeId, LocalDate startDate, LocalDate endDate);
     List<RoomCalendar> findByRoomTypeIdAndDateGreaterThanEqualOrderByDateAsc(Long roomTypeId, LocalDate date);
+    java.util.Optional<RoomCalendar> findByRoomTypeIdAndDate(Long roomTypeId, LocalDate date);
 }

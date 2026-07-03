@@ -16,6 +16,7 @@ public class NotificationResponse {
     private String message;
     private Long bookingId;
     private String bookingCode;
+    private String type;
     private Boolean isRead;
     private LocalDateTime createdAt;
 }

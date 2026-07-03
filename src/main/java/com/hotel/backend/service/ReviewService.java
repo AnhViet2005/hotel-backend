@@ -25,8 +25,8 @@ import java.util.stream.Collectors;
 public class ReviewService {
 
     private final ReviewRepository reviewRepository;
-
     private final BookingRepository bookingRepository;
+    private final NotificationService notificationService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -61,6 +61,10 @@ public class ReviewService {
                 .isPublished(true)
                 .build();
         Review saved = reviewRepository.save(review);
+        
+        // Gửi thông báo cho chủ khách sạn
+        notificationService.notifyNewReview(saved);
+        
         return toResponse(saved);
     }
 
@@ -70,6 +74,15 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public List<ReviewResponseDTO> getReviewsByHotel(Long hotelId) {
         List<Review> reviews = reviewRepository.findByHotelIdAndIsPublishedTrue(hotelId);
+        return reviews.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    /**
+     * Get all reviews for hotels owned by a specific owner.
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewResponseDTO> getReviewsForOwner(User owner) {
+        List<Review> reviews = reviewRepository.findByHotelOwnerId(owner.getId());
         return reviews.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -107,6 +120,24 @@ public class ReviewService {
     }
 
     /**
+     * Owner: reply to a review for their own hotel.
+     */
+    @Transactional
+    public ReviewResponseDTO replyToReviewAsOwner(User owner, Long reviewId, String replyText) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("Review not found"));
+        
+        if (!review.getHotel().getOwner().getId().equals(owner.getId())) {
+            throw new IllegalArgumentException("Khách sạn này không phải của bạn");
+        }
+
+        review.setAdminReply(replyText);
+        review.setAdminRepliedAt(java.time.LocalDateTime.now());
+        Review saved = reviewRepository.save(review);
+        return toResponse(saved);
+    }
+
+    /**
      * Admin: delete a review.
      */
     @Transactional
@@ -117,10 +148,43 @@ public class ReviewService {
         reviewRepository.deleteById(reviewId);
     }
 
+    /**
+     * User: update their own review.
+     */
+    @Transactional
+    public ReviewResponseDTO updateReview(User currentUser, Long reviewId, ReviewRequestDTO request) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("Review not found"));
+        
+        if (!review.getUser().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Bạn không có quyền sửa đánh giá của người khác");
+        }
+
+        review.setRating(java.math.BigDecimal.valueOf(request.rating()));
+        review.setComment(request.comment());
+        Review saved = reviewRepository.save(review);
+        return toResponse(saved);
+    }
+
+    /**
+     * User: delete their own review.
+     */
+    @Transactional
+    public void deleteByUser(User currentUser, Long reviewId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("Review not found"));
+        
+        if (!review.getUser().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Bạn không có quyền xóa đánh giá của người khác");
+        }
+        reviewRepository.delete(review);
+    }
+
     private ReviewResponseDTO toResponse(Review review) {
         return new ReviewResponseDTO(
                 review.getId(),
                 review.getUser() != null ? review.getUser().getFullName() : null,
+                review.getUser() != null ? review.getUser().getEmail() : null,
                 review.getUser() != null ? review.getUser().getAvatarUrl() : null,
                 review.getHotel() != null ? review.getHotel().getHotelName() : null,
                 review.getRating() != null ? review.getRating().intValue() : 0,

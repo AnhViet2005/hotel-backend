@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public record ReviewResponseDTO(
         Long id,
         String userName,
+        String userEmail,
         String userAvatar,
         String hotelName,
         int rating,

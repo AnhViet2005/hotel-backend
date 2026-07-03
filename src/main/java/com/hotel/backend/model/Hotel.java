@@ -50,6 +50,9 @@ public class Hotel {
     @Column(name = "is_active")
     private Boolean isActive;
 
+    @Column(name = "is_approved")
+    private Boolean isApproved;
+
     @Column(name = "deposit_percentage")
     private Integer depositPercentage; // Default to 30 (representing 30%)
 
@@ -60,6 +63,7 @@ public class Hotel {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         if (isActive == null) isActive = true;
+        if (isApproved == null) isApproved = false;
         if (depositPercentage == null) depositPercentage = 30;
     }
 
@@ -80,4 +84,13 @@ public class Hotel {
 
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Review> reviews;
+
+    @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Promotion> promotions;
+
+    @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<HotelStatistics> statistics;
+
+    @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Favorite> favorites;
 }

@@ -58,6 +58,7 @@ public class AuthService {
                 .fullName(user.getFullName())
                 .role("ADMIN")
                 .phone(user.getPhone())
+                .id(user.getId())
                 .build();
     }
 
@@ -85,6 +86,7 @@ public class AuthService {
                 .fullName(user.getFullName())
                 .role("USER")
                 .phone(user.getPhone())
+                .id(user.getId())
                 .build();
     }
 
@@ -125,6 +127,7 @@ public class AuthService {
                 .fullName(user.getFullName())
                 .role("OWNER")
                 .phone(user.getPhone())
+                .id(user.getId())
                 .build();
     }
 
@@ -156,6 +159,7 @@ public class AuthService {
                 .fullName(user.getFullName())
                 .role(user.getRole().getRoleName())
                 .phone(user.getPhone())
+                .id(user.getId())
                 .build();
     }
 }
