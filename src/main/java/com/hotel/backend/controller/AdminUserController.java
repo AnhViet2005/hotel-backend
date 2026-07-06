@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+import com.hotel.backend.dto.OwnerDetailsResponse;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -42,6 +43,12 @@ public class AdminUserController {
         if (!"ADMIN".equalsIgnoreCase(user.getRole().getRoleName())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Thao tác này chỉ dành cho Quản trị viên hệ thống.");
         }
+    }
+
+    @GetMapping("/{id}/details")
+    public ResponseEntity<OwnerDetailsResponse> getDetails(@PathVariable Long id) {
+        ensureAdmin();
+        return ResponseEntity.ok(adminUserService.getOwnerDetails(id));
     }
 
     @GetMapping

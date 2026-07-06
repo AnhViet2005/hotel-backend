@@ -91,6 +91,7 @@ public class UserController {
             @RequestParam(required = false) MultipartFile avatar,
             @RequestParam(required = false) String fullName,
             @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String email,
             @RequestParam(required = false) String currentPassword,
             @RequestParam(required = false) String newPassword,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -103,6 +104,12 @@ public class UserController {
         }
         if (phone != null && !phone.trim().isEmpty()) {
             user.setPhone(phone.trim());
+        }
+        if (email != null && !email.trim().isEmpty() && !email.equalsIgnoreCase(user.getEmail())) {
+            if (userRepository.findByEmail(email).isPresent()) {
+                return ResponseEntity.badRequest().body(java.util.Map.of("message", "Email này đã được sử dụng bởi một tài khoản khác."));
+            }
+            user.setEmail(email.trim().toLowerCase());
         }
 
         // Update password
@@ -125,7 +132,8 @@ public class UserController {
                 "message", "Cập nhật thành công",
                 "avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
                 "fullName", user.getFullName() != null ? user.getFullName() : "",
-                "phone", user.getPhone() != null ? user.getPhone() : ""
+                "phone", user.getPhone() != null ? user.getPhone() : "",
+                "email", user.getEmail()
         ));
     }
 }

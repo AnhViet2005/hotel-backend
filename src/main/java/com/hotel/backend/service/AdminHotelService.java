@@ -172,7 +172,7 @@ public class AdminHotelService {
         return toResponse(hotelRepository.save(hotel));
     }
 
-    private AdminHotelResponse toResponse(Hotel hotel) {
+    public AdminHotelResponse toResponse(Hotel hotel) {
         String imageUrl = hotel.getImages() != null && !hotel.getImages().isEmpty()
                 ? hotel.getImages().iterator().next().getImageUrl()
                 : null;

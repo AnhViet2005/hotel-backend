@@ -11,6 +11,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.hotel.backend.dto.AdminHotelResponse;
+import com.hotel.backend.dto.OwnerDetailsResponse;
+import com.hotel.backend.repository.HotelRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -18,7 +21,23 @@ import java.util.stream.Collectors;
 public class AdminUserService {
 
     private final UserRepository userRepository;
+    private final HotelRepository hotelRepository;
+    private final AdminHotelService adminHotelService;
     private final jakarta.persistence.EntityManager entityManager;
+
+    public OwnerDetailsResponse getOwnerDetails(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng."));
+        
+        List<AdminHotelResponse> hotels = hotelRepository.findByOwnerId(id).stream()
+                .map(adminHotelService::toResponse)
+                .collect(Collectors.toList());
+        
+        return OwnerDetailsResponse.builder()
+                .user(toResponse(user))
+                .hotels(hotels)
+                .build();
+    }
 
     public List<AdminUserResponse> getAll(String keyword, String role) {
         List<User> users = userRepository.findAll();
