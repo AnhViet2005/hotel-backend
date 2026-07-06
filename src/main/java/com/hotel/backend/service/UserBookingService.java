@@ -28,7 +28,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
+
 public class UserBookingService {
 
     private final BookingRepository bookingRepository;
@@ -38,6 +38,7 @@ public class UserBookingService {
     private final BookingRoomRepository bookingRoomRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final PromotionService promotionService;
 
     // ──────────────────────────────────────────────
     // Helper: get current authenticated user
@@ -113,13 +114,19 @@ public class UserBookingService {
         BigDecimal taxesAndFees = new BigDecimal("100000");
         BigDecimal total = roomTotal.add(taxesAndFees);
 
+        // Tính toán giảm giá nếu có
+        BigDecimal discount = promotionService.calculateDiscount(request.getPromoCode(), hotel.getId(), total);
+        BigDecimal finalTotal = total.subtract(discount);
+
         // Calculate revenue split based on hotel configuration (default 30/70)
         double depositPercent = (hotel.getDepositPercentage() != null ? hotel.getDepositPercentage() : 30) / 100.0;
-        BigDecimal adminRevenue = total.multiply(BigDecimal.valueOf(depositPercent));
-        BigDecimal hotelOwnerRevenue = total.subtract(adminRevenue);
+        BigDecimal adminRevenue = finalTotal.multiply(BigDecimal.valueOf(depositPercent));
+        BigDecimal hotelOwnerRevenue = finalTotal.subtract(adminRevenue);
 
         saved.setSubtotal(total);
-        saved.setTotalAmount(total);
+        saved.setDiscountAmount(discount);
+        saved.setTotalAmount(finalTotal);
+        saved.setPromoCode(request.getPromoCode());
         saved.setAdminRevenue(adminRevenue);
         saved.setHotelOwnerRevenue(hotelOwnerRevenue);
         
@@ -141,22 +148,18 @@ public class UserBookingService {
         if (booking.getStatus() != Booking.BookingStatus.PENDING) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PENDING bookings can be confirmed");
         }
-        booking.setStatus(Booking.BookingStatus.CONFIRMED);
+        booking.setStatus(Booking.BookingStatus.DEPOSITED);
         Booking saved = bookingRepository.save(booking);
 
-        // Gửi thông báo cho khách hàng khi đơn đã được xác nhận (nhận cọc 30%)
+        // Gửi thông báo cho khách hàng khi đơn đã được nhận cọc 30%
         notificationService.notifyBookingConfirmed(saved);
 
-        // Gửi thông báo cho chủ khách sạn khi nhận cọc 30%
-        if (saved.getHotel() != null) {
-            Long ownerId = saved.getHotel().getOwner() != null ? saved.getHotel().getOwner().getId() : null;
-            notificationService.notifyDepositReceived(
-                saved.getId(),
-                saved.getBookingCode(),
-                saved.getAdminRevenue(),
-                ownerId
-            );
-        }
+        // Gửi thông báo cho Admin: Chỉ Admin nhận được thông báo cọc để duyệt
+        notificationService.notifyDepositReceived(
+            saved.getId(),
+            saved.getBookingCode(),
+            saved.getAdminRevenue()
+        );
 
         // Gửi email xác nhận đặt phòng thật
         emailService.sendBookingConfirmationEmail(saved);
@@ -178,6 +181,11 @@ public class UserBookingService {
         }
 
         // Chỉ thanh toán khi CONFIRMED (admin đã xác nhận nhận cọc)
+        if (booking.getStatus() == Booking.BookingStatus.DEPOSITED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Vui lòng chờ Admin xác nhận khoản tiền cọc trước khi thanh toán phần còn lại.");
+        }
+        
         if (booking.getStatus() != Booking.BookingStatus.CONFIRMED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Chỉ có thể thanh toán phần còn lại khi đơn đã được xác nhận (CONFIRMED)");

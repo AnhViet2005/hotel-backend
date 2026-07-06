@@ -1,9 +1,8 @@
 package com.hotel.backend.controller;
 
-import com.hotel.backend.config.WebConfig;
 
 import com.hotel.backend.service.FileUploadService;
-import com.hotel.backend.config.WebConfig;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

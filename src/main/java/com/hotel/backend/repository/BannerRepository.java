@@ -7,6 +7,6 @@ import java.util.List;
 
 @Repository
 public interface BannerRepository extends JpaRepository<Banner, Long> {
-    List<Banner> findByIsActiveOrderByDisplayOrderAsc(Boolean isActive);
     List<Banner> findAllByOrderByDisplayOrderAsc();
+    List<Banner> findByIsActiveOrderByDisplayOrderAsc(Boolean isActive);
 }

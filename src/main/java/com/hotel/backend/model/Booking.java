@@ -78,6 +78,9 @@ public class Booking {
     @Column(name = "remaining_paid_at")
     private LocalDateTime remainingPaidAt;
 
+    @Column(name = "promo_code", length = 50)
+    private String promoCode;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -96,7 +99,7 @@ public class Booking {
     private Review review;
 
     public enum BookingStatus {
-        PENDING, CONFIRMED, CANCELLED, COMPLETED
+        PENDING, DEPOSITED, CONFIRMED, CANCELLED, COMPLETED
     }
 
     public enum RemainingPaymentStatus {

@@ -3,7 +3,7 @@ package com.hotel.backend.service;
 import com.hotel.backend.dto.AdminHotelRequest;
 import com.hotel.backend.dto.AdminHotelResponse;
 import com.hotel.backend.model.Hotel;
-import com.hotel.backend.model.HotelImage;
+
 import com.hotel.backend.model.User;
 import com.hotel.backend.repository.HotelRepository;
 import com.hotel.backend.repository.UserRepository;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
+
 public class AdminHotelService {
 
     private final HotelRepository hotelRepository;
@@ -140,6 +140,20 @@ public class AdminHotelService {
         }
 
         hotelRepository.delete(hotel);
+    }
+
+    @Transactional
+    public AdminHotelResponse toggleStatus(Long id) {
+        User current = getCurrentUser();
+        Hotel hotel = hotelRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khách sạn."));
+        
+        if (!isAdmin(current) && (hotel.getOwner() == null || !hotel.getOwner().getId().equals(current.getId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền thay đổi trạng thái khách sạn này.");
+        }
+
+        hotel.setIsActive(!Boolean.TRUE.equals(hotel.getIsActive()));
+        return toResponse(hotelRepository.save(hotel));
     }
 
     @Transactional

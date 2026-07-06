@@ -14,7 +14,7 @@ import java.time.LocalTime;
 import java.util.*;
 
 @Configuration
-@SuppressWarnings("null")
+
 public class DataInitializer implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
@@ -80,12 +80,43 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+        // Luôn chạy logic vá phòng cho các khách sạn chưa có phòng
+        addRoomTypesToHotelsWithoutRooms();
+
+        // --- PATCH FOR long.le@gmail.com ACCOUNT (Luôn chạy để đảm bảo quyền truy cập) ---
+        userRepository.findByEmail("long.le@gmail.com").ifPresent(u -> {
+            Role ownerRole = roleRepository.findByRoleName("OWNER").orElse(null);
+            if (ownerRole != null) {
+                boolean updated = false;
+                if (u.getRole() == null || (!"OWNER".equalsIgnoreCase(u.getRole().getRoleName()) && !"ADMIN".equalsIgnoreCase(u.getRole().getRoleName()))) {
+                    u.setRole(ownerRole);
+                    updated = true;
+                }
+                if (!Boolean.TRUE.equals(u.getIsActive())) {
+                    u.setIsActive(true);
+                    updated = true;
+                }
+                if (updated) {
+                    userRepository.save(u);
+                    System.out.println(">>> Đã vá tài khoản long.le@gmail.com: Chuyển vai trò sang OWNER và Kích hoạt.");
+                }
+
+                // Đảm bảo user này có ít nhất 1 khách sạn để Dashboard có dữ liệu
+                if (hotelRepository.findByOwnerId(u.getId()).isEmpty()) {
+                    List<Amenity> defaultAmenities = amenityRepository.findAll();
+                    createHotel("Long's Luxury Hotel", 
+                        "Khách sạn đẳng cấp của Mr. Long tại trung tâm thành phố.",
+                        "123 Lê Lợi", "Quận 1", "Bến Thành", "TP. Hồ Chí Minh", "5.0", u, 
+                        defaultAmenities.size() > 5 ? defaultAmenities.subList(0, 5) : defaultAmenities,
+                        "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb");
+                    System.out.println(">>> Đã tạo khách sạn mặc định cho chủ sở hữu: long.le@gmail.com");
+                }
+            }
+        });
+
         if (hotelRepository.count() > 0) {
-            return; // Already seeded
+            return; // Dữ liệu mẫu ban đầu đã có
         }
-
-        // Clean up existing partial data if any
-
 
         // 1. Roles
         Role adminRole = roleRepository.findByRoleName("ADMIN").orElseGet(() -> roleRepository.save(Role.builder().roleName("ADMIN").build()));
@@ -101,7 +132,6 @@ public class DataInitializer implements CommandLineRunner {
                 .isActive(true)
                 .build());
 
-        // Additional admin account
         userRepository.save(User.builder()
                 .fullName("Quản trị phụ")
                 .email("admin2@hotel.com")
@@ -146,7 +176,6 @@ public class DataInitializer implements CommandLineRunner {
         amenityRepository.saveAll(amenities);
 
         // 4. Hotels
-        // Hanoi
         Hotel metropole = createHotel("Sofitel Legend Metropole Hanoi", 
                 "Khách sạn lịch sử mang phong cách thuộc địa Pháp, biểu tượng của sự sang trọng tại Hà Nội.",
                 "15 Ngô Quyền", "Hoàn Kiếm", "Tràng Tiền", "Hà Nội", "5.0", owner, amenities.subList(0, 8),
@@ -157,7 +186,6 @@ public class DataInitializer implements CommandLineRunner {
                 "94 Mã Mây", "Hoàn Kiếm", "Hàng Buồm", "Hà Nội", "4.5", owner, amenities.subList(0, 5),
                 "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb");
 
-        // HCMC
         Hotel reverie = createHotel("The Reverie Saigon",
                 "Khách sạn xa hoa bậc nhất Việt Nam với thiết kế nội thất Ý lộng lẫy.",
                 "22-36 Nguyễn Huệ", "Quận 1", "Bến Nghé", "TP. Hồ Chí Minh", "5.0", owner, amenities,
@@ -168,7 +196,6 @@ public class DataInitializer implements CommandLineRunner {
                 "720A Điện Biên Phủ", "Bình Thạnh", "Phường 22", "TP. Hồ Chí Minh", "5.0", owner, amenities,
                 "https://images.unsplash.com/photo-1582719508461-905c673771fd");
 
-        // Da Nang
         Hotel intercon = createHotel("InterContinental Danang Sun Peninsula Resort",
                 "Khu nghỉ dưỡng biệt lập trên bán đảo Sơn Trà, tuyệt tác kiến trúc của Bill Bensley.",
                 "Bãi Bắc, Bán đảo Sơn Trà", "Sơn Trà", "Thọ Quang", "Đà Nẵng", "5.0", owner, amenities,
@@ -179,7 +206,6 @@ public class DataInitializer implements CommandLineRunner {
                 "105 Võ Nguyên Giáp", "Ngũ Hành Sơn", "Khuê Mỹ", "Đà Nẵng", "5.0", owner, amenities,
                 "https://images.unsplash.com/photo-1499856871958-5b9627545d1a");
 
-        // Vung Tau
         Hotel imperial = createHotel("The Imperial Hotel Vũng Tàu",
                 "Khách sạn 5 sao mang phong cách kiến trúc Phục Hưng độc đáo ngay sát biển.",
                 "159 Thùy Vân", "Thắng Tam", "Thắng Tam", "Vũng Tàu", "5.0", owner, amenities,
@@ -190,7 +216,6 @@ public class DataInitializer implements CommandLineRunner {
                 "15 Thi Sách", "Thắng Tam", "Thắng Tam", "Vũng Tàu", "5.0", owner, amenities,
                 "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb");
 
-        // Da Lat
         Hotel dalatPalace = createHotel("Dalat Palace Heritage Hotel",
                 "Khách sạn cổ kính mang vẻ đẹp di sản thời Pháp thuộc, nhìn ra hồ Xuân Hương.",
                 "2 Trần Phú", "Phường 3", "Phường 3", "Đà Lạt", "5.0", owner, amenities,
@@ -201,7 +226,6 @@ public class DataInitializer implements CommandLineRunner {
                 "10 Phan Bội Châu", "Phường 1", "Phường 1", "Đà Lạt", "4.0", owner, amenities.subList(0, 6),
                 "https://images.unsplash.com/photo-1566665797739-1674de7a421a");
 
-        // Nha Trang
         Hotel vinpearlNt = createHotel("Vinpearl Resort Nha Trang",
                 "Khu nghỉ dưỡng sang trọng trên đảo Hòn Tre với bãi biển riêng thơ mộng.",
                 "Đảo Hòn Tre", "Vĩnh Nguyên", "Vĩnh Nguyên", "Nha Trang", "5.0", owner, amenities,
@@ -212,7 +236,6 @@ public class DataInitializer implements CommandLineRunner {
                 "32-34 Trần Phú", "Lộc Thọ", "Lộc Thọ", "Nha Trang", "5.0", owner, amenities,
                 "https://images.unsplash.com/photo-1631049307264-da0ec9d70304");
 
-        // Phu Quoc
         Hotel marriott = createHotel("JW Marriott Phu Quoc Emerald Bay Resort",
                 "Khu nghỉ dưỡng theo chủ đề trường đại học giả tưởng độc đáo tại Bãi Khem.",
                 "Bãi Khem", "Phú Quốc", "An Thới", "Kiên Giang", "5.0", owner, amenities,
@@ -425,5 +448,22 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
     }
-}
 
+    @Transactional
+    public void addRoomTypesToHotelsWithoutRooms() {
+        List<Hotel> hotels = hotelRepository.findAll();
+        for (Hotel hotel : hotels) {
+            long roomTypeCount = roomTypeRepository.countByHotelId(hotel.getId());
+            if (roomTypeCount == 0) {
+                // Add default room types
+                seedRooms(hotel, "Phòng Standard", "Phòng tiêu chuẩn đầy đủ tiện nghi, phù hợp cho 2 người.", 800000, 2, 1, 10, 
+                    "https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=1000");
+                seedRooms(hotel, "Phòng Deluxe", "Phòng sang trọng với tầm nhìn đẹp và nội thất hiện đại.", 1500000, 2, 2, 5, 
+                    "https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1000");
+                seedRooms(hotel, "Phòng Suite", "Căn hộ cao cấp với phòng khách riêng biệt và tiện ích đẳng cấp.", 3000000, 2, 2, 2, 
+                    "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1000");
+                System.out.println(">>> Đã tự động thêm các loại phòng cho khách sạn: " + hotel.getHotelName());
+            }
+        }
+    }
+}

@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
     List<RoomType> findByHotelId(Long hotelId);
+    long countByHotelId(Long hotelId);
 }

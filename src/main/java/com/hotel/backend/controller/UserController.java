@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.RequestBody;
+
 import org.springframework.web.multipart.MultipartFile;
 import com.hotel.backend.service.FileUploadService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
-@SuppressWarnings("null")
+
 public class UserController {
 
     private final BookingRepository bookingRepository;
@@ -89,12 +89,23 @@ public class UserController {
     @PutMapping(value = "/settings", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateSettings(
             @RequestParam(required = false) MultipartFile avatar,
+            @RequestParam(required = false) String fullName,
+            @RequestParam(required = false) String phone,
             @RequestParam(required = false) String currentPassword,
             @RequestParam(required = false) String newPassword,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         var user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
 
+        // Update basic info
+        if (fullName != null && !fullName.trim().isEmpty()) {
+            user.setFullName(fullName.trim());
+        }
+        if (phone != null && !phone.trim().isEmpty()) {
+            user.setPhone(phone.trim());
+        }
+
+        // Update password
         if (newPassword != null && !newPassword.trim().isEmpty()) {
             if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
                 return ResponseEntity.badRequest().body(java.util.Map.of("message", "Mật khẩu hiện tại không đúng."));
@@ -102,6 +113,7 @@ public class UserController {
             user.setPasswordHash(passwordEncoder.encode(newPassword));
         }
 
+        // Update avatar
         if (avatar != null && !avatar.isEmpty()) {
             String filename = fileUploadService.store(avatar);
             user.setAvatarUrl("http://localhost:8080/uploads/" + filename);
@@ -109,7 +121,11 @@ public class UserController {
 
         userRepository.save(user);
 
-        return ResponseEntity.ok(java.util.Map.of("message", "Cập nhật thành công", "avatarUrl",
-                user.getAvatarUrl() != null ? user.getAvatarUrl() : ""));
+        return ResponseEntity.ok(java.util.Map.of(
+                "message", "Cập nhật thành công",
+                "avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
+                "fullName", user.getFullName() != null ? user.getFullName() : "",
+                "phone", user.getPhone() != null ? user.getPhone() : ""
+        ));
     }
 }

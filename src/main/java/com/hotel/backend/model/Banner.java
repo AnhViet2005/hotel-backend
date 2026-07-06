@@ -2,7 +2,6 @@ package com.hotel.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "banners")
@@ -16,13 +15,15 @@ public class Banner {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String title;
+
     private String subtitle;
-    
-    @Column(name = "image_url", length = 500)
+
+    @Column(name = "image_url", nullable = false)
     private String imageUrl;
-    
-    @Column(name = "link_url", length = 500)
+
+    @Column(name = "link_url")
     private String linkUrl;
 
     @Column(name = "display_order")
@@ -30,14 +31,4 @@ public class Banner {
 
     @Column(name = "is_active")
     private Boolean isActive;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        if (isActive == null) isActive = true;
-        if (displayOrder == null) displayOrder = 0;
-    }
 }

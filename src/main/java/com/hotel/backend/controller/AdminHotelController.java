@@ -6,6 +6,7 @@ import com.hotel.backend.service.AdminHotelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 import java.util.List;
 
@@ -54,5 +55,10 @@ public class AdminHotelController {
     public ResponseEntity<AdminHotelResponse> approve(@PathVariable Long id) {
         System.out.println("DEBUG: Approve request for hotel ID: " + id);
         return ResponseEntity.ok(adminHotelService.approveHotel(id));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<AdminHotelResponse> toggleStatus(@PathVariable Long id) {
+        return ResponseEntity.ok(adminHotelService.toggleStatus(id));
     }
 }

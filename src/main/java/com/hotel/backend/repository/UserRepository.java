@@ -9,4 +9,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
     java.util.List<User> findByRoleRoleName(String roleName);
     java.util.List<User> findByRoleRoleNameIgnoreCase(String roleName);
+    Optional<User> findByResetToken(String resetToken);
 }

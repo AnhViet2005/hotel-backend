@@ -20,4 +20,5 @@ public class BookingRequest {
     private String guestEmail;
     private String guestPhone;
     private Integer quantity; // Kept for legacy
+    private String promoCode;
 }

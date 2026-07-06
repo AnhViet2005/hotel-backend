@@ -5,7 +5,7 @@ import com.hotel.backend.model.Booking;
 import com.hotel.backend.model.User;
 import com.hotel.backend.repository.BookingRepository;
 import com.hotel.backend.repository.UserRepository;
-import com.hotel.backend.service.NotificationService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
+
 public class AdminBookingService {
 
     private final BookingRepository bookingRepository;
@@ -113,58 +113,71 @@ public class AdminBookingService {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn đặt phòng."));
 
-        if (!isAdmin(current) && !isOwnerOfBooking(booking, current.getId())) {
+        boolean currentIsAdmin = isAdmin(current);
+        boolean currentIsOwner = isOwnerOfBooking(booking, current.getId());
+
+        if (!currentIsAdmin && !currentIsOwner) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền cập nhật trạng thái.");
         }
 
+        Booking.BookingStatus newStatus;
         try {
-            Booking.BookingStatus newStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
-            booking.setStatus(newStatus);
-            
-            // Nếu hủy đặt phòng thì đặt doanh thu về 0
-            if (newStatus == Booking.BookingStatus.CANCELLED) {
-                booking.setAdminRevenue(java.math.BigDecimal.ZERO);
-                booking.setHotelOwnerRevenue(java.math.BigDecimal.ZERO);
-            }
+            newStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái không hợp lệ: " + status);
         }
 
+        // --- KIỂM TRA QUYỀN CHỦ KHÁCH SẠN ---
+        if (!currentIsAdmin && currentIsOwner) {
+            // Chủ khách sạn chỉ được phép hoàn tất đơn hàng (COMPLETED)
+            if (newStatus != Booking.BookingStatus.COMPLETED) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bạn không có quyền chuyển trạng thái này.");
+            }
+            // Chỉ hoàn tất khi Admin đã duyệt (CONFIRMED)
+            if (booking.getStatus() != Booking.BookingStatus.CONFIRMED) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đơn hàng phải được Admin xác nhận cọc trước.");
+            }
+        }
+
+        // Cập nhật trạng thái
+        booking.setStatus(newStatus);
+        
+        if (newStatus == Booking.BookingStatus.CANCELLED) {
+            booking.setAdminRevenue(java.math.BigDecimal.ZERO);
+            booking.setHotelOwnerRevenue(java.math.BigDecimal.ZERO);
+        }
+
         Booking saved = bookingRepository.save(booking);
-        // Gửi thông báo cho khách hàng và Admin/Chủ khách sạn
+
+        // --- HỆ THỐNG THÔNG BÁO (PULL REQUEST) ---
         try {
-            // 1. Thông báo cho khách hàng khi Admin thay đổi trạng thái
-            if (saved.getStatus() == Booking.BookingStatus.CONFIRMED) {
+            // Thông báo cho khách hàng
+            if (newStatus == Booking.BookingStatus.CONFIRMED) {
                 notificationService.notifyBookingConfirmed(saved);
-            } else if (saved.getStatus() == Booking.BookingStatus.CANCELLED) {
-                notificationService.notifyBookingCancelled(saved, "Admin đã cập nhật trạng thái đơn hàng.");
-            } else if (saved.getStatus() == Booking.BookingStatus.COMPLETED) {
+            } else if (newStatus == Booking.BookingStatus.CANCELLED) {
+                notificationService.notifyBookingCancelled(saved, "Đơn hàng đã bị hủy.");
+            } else if (newStatus == Booking.BookingStatus.COMPLETED) {
                 notificationService.sendToUser(saved.getUser(), 
-                    String.format("Đơn hàng #%s tại %s đã hoàn tất. Cảm ơn bạn đã sử dụng dịch vụ!", 
-                        saved.getBookingCode(), saved.getHotel().getHotelName()),
+                    "Đơn hàng #" + saved.getBookingCode() + " đã hoàn tất. Cảm ơn bạn!", 
                     saved.getId(), saved.getBookingCode(), "BOOKING_COMPLETED");
             }
 
-            // 2. Thông báo cho Admin/Chủ khách sạn (giữ nguyên logic cũ)
-            if (saved.getHotel() != null) {
-                Long ownerId = saved.getHotel().getOwner() != null ? saved.getHotel().getOwner().getId() : null;
-                if (saved.getStatus() == Booking.BookingStatus.CONFIRMED) {
-                    notificationService.notifyDepositReceived(
-                        saved.getId(),
-                        saved.getBookingCode(),
-                        saved.getAdminRevenue(),
-                        ownerId
-                    );
-                } else if (saved.getStatus() == Booking.BookingStatus.COMPLETED) {
-                    notificationService.notifyFullPaymentReceived(
-                        saved.getId(),
-                        saved.getBookingCode(),
-                        saved.getTotalAmount(),
-                        ownerId
-                    );
-                }
+            // Thông báo chuyển tiếp cho Chủ khách sạn (nếu Admin duyệt CONFIRMED)
+            if (currentIsAdmin && newStatus == Booking.BookingStatus.CONFIRMED) {
+                Long ownerId = (saved.getHotel() != null && saved.getHotel().getOwner() != null) 
+                    ? saved.getHotel().getOwner().getId() : null;
+                notificationService.notifyAdminConfirmedToOwner(saved.getId(), saved.getBookingCode(), saved.getTotalAmount(), ownerId);
             }
-        } catch (Exception ignored) {}
+
+            // Thông báo thu đủ tiền (nếu đơn hoàn tất)
+            if (newStatus == Booking.BookingStatus.COMPLETED) {
+                Long ownerId = (saved.getHotel() != null && saved.getHotel().getOwner() != null) 
+                    ? saved.getHotel().getOwner().getId() : null;
+                notificationService.notifyFullPaymentReceived(saved.getId(), saved.getBookingCode(), saved.getTotalAmount(), ownerId);
+            }
+        } catch (Exception e) {
+            System.err.println("Error sending notifications: " + e.getMessage());
+        }
 
         return toResponse(saved);
     }
@@ -215,6 +228,8 @@ public class AdminBookingService {
         } catch (Exception ignored) {}
 
         java.math.BigDecimal amount = b.getTotalAmount() != null ? b.getTotalAmount() : java.math.BigDecimal.ZERO;
+        
+        // Tránh lỗi chia/nhân với null
         java.math.BigDecimal deposit = amount.multiply(new java.math.BigDecimal("0.3"));
         java.math.BigDecimal remaining = amount.multiply(new java.math.BigDecimal("0.7"));
 

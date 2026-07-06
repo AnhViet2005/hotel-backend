@@ -39,6 +39,12 @@ public class User {
     @JoinColumn(name = "role_id")
     private Role role;
 
+    @Column(name = "reset_token")
+    private String resetToken;
+
+    @Column(name = "reset_token_expiry")
+    private java.time.LocalDateTime resetTokenExpiry;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

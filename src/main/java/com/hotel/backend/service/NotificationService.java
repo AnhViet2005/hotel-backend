@@ -14,34 +14,33 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
+
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
 
-    /** Gửi thông báo khi khách thanh toán cọc 30% */
+    /** Gửi thông báo khi khách thanh toán cọc 30% - CHỈ GỬI CHO ADMIN */
     @Transactional
-    public void notifyDepositReceived(Long bookingId, String bookingCode, java.math.BigDecimal amount, Long hotelOwnerId) {
-        // 1. Thông báo cho chủ khách sạn (Chỉ khách sạn của họ)
+    public void notifyDepositReceived(Long bookingId, String bookingCode, java.math.BigDecimal amount) {
+        userRepository.findByEmail("admin@hotel.com").ifPresent(admin -> {
+            String msg = String.format("Bạn nhận được đơn đặt phòng mới và nhận được %s ₫ tiền cọc từ đơn hàng #%s. Vui lòng xác nhận để chủ khách sạn tiếp tục.",
+                formatAmount(amount), bookingCode);
+            saveNotification(admin, msg, bookingId, bookingCode, "DEPOSIT_PAID");
+        });
+    }
+
+    /** Thông báo cho chủ khách sạn sau khi Admin đã bấm hoàn tất xác nhận cọc */
+    @Transactional
+    public void notifyAdminConfirmedToOwner(Long bookingId, String bookingCode, java.math.BigDecimal totalAmount, Long hotelOwnerId) {
         if (hotelOwnerId != null) {
             User owner = userRepository.findById(hotelOwnerId).orElse(null);
             if (owner != null) {
-                String ownerMsg = String.format("Phòng của bạn đã được đặt! Khách đã thanh toán cọc 30%% (%s ₫) cho đơn #%s.",
-                    formatAmount(amount), bookingCode);
-                saveNotification(owner, ownerMsg, bookingId, bookingCode, "DEPOSIT_PAID");
+                String ownerMsg = String.format("Admin đã xác nhận tiền cọc cho đơn #%s. Bây giờ bạn có thể tiếp tục phục vụ khách và hoàn tất đơn hàng khi khách trả nốt tiền.",
+                    bookingCode);
+                saveNotification(owner, ownerMsg, bookingId, bookingCode, "ADMIN_CONFIRMED");
             }
         }
-
-        // 2. Thông báo cho Admin chính qua Email
-        userRepository.findByEmail("admin@hotel.com").ifPresent(admin -> {
-            // Chỉ gửi nếu admin khác chủ khách sạn (tránh trùng)
-            if (hotelOwnerId == null || !admin.getId().equals(hotelOwnerId)) {
-                String msg = String.format("Bạn nhận được đơn đặt phòng mới và nhận được %s đ từ khách hàng cho đơn hàng #%s.",
-                    formatAmount(amount), bookingCode);
-                saveNotification(admin, msg, bookingId, bookingCode, "DEPOSIT_PAID");
-            }
-        });
     }
 
     /** Gửi thông báo khi hoàn tất thanh toán 100% (sau khi khách thanh toán 70% còn lại) */
@@ -106,13 +105,15 @@ public class NotificationService {
         sendToUser(booking.getUser(), msg, booking.getId(), booking.getBookingCode(), "BOOKING_CANCELLED");
     }
 
-    /** Thông báo khi có đánh giá mới */
     @Transactional
     public void notifyNewReview(com.hotel.backend.model.Review review) {
         com.hotel.backend.model.Hotel hotel = review.getHotel();
         if (hotel != null && hotel.getOwner() != null) {
-            String msg = String.format("Khách sạn %s vừa có đánh giá %d sao mới từ khách hàng %s.",
-                hotel.getHotelName(), review.getRating(), review.getUser().getFullName());
+            // Sửa lỗi: Rating là BigDecimal, không được dùng %d
+            String msg = String.format("Khách sạn %s vừa có đánh giá %s sao mới từ khách hàng %s.",
+                hotel.getHotelName(), 
+                review.getRating() != null ? review.getRating().setScale(0, java.math.RoundingMode.HALF_UP).toString() : "0", 
+                review.getUser().getFullName());
             saveNotification(hotel.getOwner(), msg, null, null, "NEW_REVIEW");
         }
     }

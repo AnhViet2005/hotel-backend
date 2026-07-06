@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
-@SuppressWarnings("null")
+
 public class AdminRoomTypeController {
 
     private final RoomTypeRepository roomTypeRepository;

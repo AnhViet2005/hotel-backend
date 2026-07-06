@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
+
 public class PublicHotelService {
 
     private final HotelRepository hotelRepository;
@@ -40,7 +40,42 @@ public class PublicHotelService {
         return mapToPublicHotelResponse(hotel, checkIn, checkOut);
     }
 
-    private PublicHotelResponse mapToPublicHotelResponse(Hotel hotel, String checkIn, String checkOut) {
+    public PublicHotelResponse getHotelByIdSimple(Long id) {
+        Hotel hotel = hotelRepository.findByIdWithImages(id)
+                .orElseThrow(() -> new RuntimeException("Hotel not found"));
+        return mapToPublicHotelResponseSimple(hotel);
+    }
+
+    public PublicHotelResponse mapToPublicHotelResponseSimple(Hotel hotel) {
+        java.util.Set<HotelImage> images = hotel.getImages() != null ? hotel.getImages() : java.util.Collections.emptySet();
+        
+        String primaryImage = images.stream()
+                .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
+                .map(HotelImage::getImageUrl)
+                .findFirst()
+                .orElse(images.isEmpty() ? null : images.iterator().next().getImageUrl());
+
+        BigDecimal minPrice = hotel.getBasePrice();
+        if (minPrice == null || minPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            minPrice = BigDecimal.ZERO;
+        }
+
+        int reviewsCount = hotel.getReviews() != null ? hotel.getReviews().size() : 0;
+
+        return PublicHotelResponse.builder()
+                .id(hotel.getId())
+                .name(hotel.getHotelName())
+                .location(hotel.getCity())
+                .address(hotel.getAddressLine() + (hotel.getDistrict() != null ? ", " + hotel.getDistrict() : ""))
+                .price(minPrice)
+                .rating(hotel.getStarRating() != null ? hotel.getStarRating() : BigDecimal.valueOf(4.5))
+                .reviews(reviewsCount > 0 ? reviewsCount : 120)
+                .image(primaryImage)
+                .description(hotel.getDescription())
+                .build();
+    }
+
+    public PublicHotelResponse mapToPublicHotelResponse(Hotel hotel, String checkIn, String checkOut) {
         java.util.Set<HotelImage> images = hotel.getImages() != null ? hotel.getImages() : java.util.Collections.emptySet();
         
         String primaryImage = images.stream()
