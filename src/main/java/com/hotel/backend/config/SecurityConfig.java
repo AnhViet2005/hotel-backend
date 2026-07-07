@@ -72,7 +72,8 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(java.util.List.of(
             "http://localhost:[*]", 
-            "https://*.vercel.app"
+            "https://*.vercel.app",
+            "https://hotel-booking-inky-eta.vercel.app"
         ));
         config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(java.util.List.of("*"));
