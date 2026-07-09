@@ -13,7 +13,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/upload")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class UploadController {
 
     private final FileUploadService fileUploadService;

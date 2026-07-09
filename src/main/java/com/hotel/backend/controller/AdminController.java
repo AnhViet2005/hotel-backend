@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AdminController {
 
     private final BookingRepository bookingRepository;

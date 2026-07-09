@@ -22,8 +22,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
-
 public class AdminRoomTypeController {
 
     private final RoomTypeRepository roomTypeRepository;

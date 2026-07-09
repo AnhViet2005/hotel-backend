@@ -31,6 +31,15 @@ public class SecurityConfig {
     }
 
     @Bean
+    // Public endpoints chain: ensures health and public APIs are always permitAll
+    public SecurityFilterChain publicApiFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/api/health", "/api/public/**", "/api/contact-info")
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .csrf(csrf -> csrf.disable());
+        return http.build();
+    }
+
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .cors(Customizer.withDefaults())
@@ -40,6 +49,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
                     "/api/public/**",
+                    "/api/health",
                     "/api/auth/**",
                     "/api/hotels/**",
                     "/api/rooms/**",

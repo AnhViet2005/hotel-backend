@@ -10,7 +10,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/public/banners")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class PublicBannerController {
 
     private final BannerRepository bannerRepository;

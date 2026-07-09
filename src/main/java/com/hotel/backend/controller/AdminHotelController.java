@@ -12,9 +12,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/hotels")
-@RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AdminHotelController {
+@RequiredArgsConstructor
 
     private final AdminHotelService adminHotelService;
 

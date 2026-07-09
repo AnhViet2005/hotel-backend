@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/notifications")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class NotificationController {
 
