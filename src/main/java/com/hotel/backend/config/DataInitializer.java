@@ -178,6 +178,20 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println(">>> Đã tạo mới tài khoản owner@hotel.com với mật khẩu owner123");
         }
 
+        // --- PATCH TO ENSURE ALL SEED_DATA.SQL USERS EXIST IN DATABASE ---
+        Role seedUserRole = roleRepository.findByRoleName("CUSTOMER").orElseGet(() -> roleRepository.save(Role.builder().roleName("CUSTOMER").build()));
+        Role seedOwnerRole = roleRepository.findByRoleName("OWNER").orElseGet(() -> roleRepository.save(Role.builder().roleName("OWNER").build()));
+
+        ensureUserExists("Nguyễn Văn Nam", "nam.nguyen@gmail.com", seedUserRole);
+        ensureUserExists("Trần Thị Mai", "mai.tran@gmail.com", seedUserRole);
+        ensureUserExists("Lê Hoàng Long", "long.le@gmail.com", seedOwnerRole);
+        ensureUserExists("Phạm Minh Anh", "anh.pham@gmail.com", seedUserRole);
+        ensureUserExists("Hoàng Gia Bảo", "bao.hoang123@gmail.com", seedOwnerRole);
+        ensureUserExists("Đặng Thu Thảo", "thao.dang@gmail.com", seedOwnerRole);
+        ensureUserExists("Vũ Đức Huy", "huy.vu@gmail.com", seedOwnerRole);
+        ensureUserExists("Ngô Thanh Tùng", "tung.ngo@gmail.com", seedOwnerRole);
+        ensureUserExists("Bùi Tuyết Mai", "mai.bui@gmail.com", seedOwnerRole);
+
         if (hotelRepository.count() > 0) {
             return; // Dữ liệu mẫu ban đầu đã có
         }
@@ -528,6 +542,19 @@ public class DataInitializer implements CommandLineRunner {
                     "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1000");
                 System.out.println(">>> Đã tự động thêm các loại phòng cho khách sạn: " + hotel.getHotelName());
             }
+        }
+    }
+
+    private void ensureUserExists(String fullName, String email, Role role) {
+        if (userRepository.findByEmail(email).isEmpty()) {
+            userRepository.save(User.builder()
+                    .fullName(fullName)
+                    .email(email)
+                    .passwordHash(passwordEncoder.encode("123456"))
+                    .role(role)
+                    .isActive(true)
+                    .build());
+            System.out.println(">>> Đã tạo tài khoản mẫu từ seed_data.sql: " + email);
         }
     }
 }
