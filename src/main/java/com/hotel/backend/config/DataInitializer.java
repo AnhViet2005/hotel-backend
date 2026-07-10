@@ -192,7 +192,7 @@ public class DataInitializer implements CommandLineRunner {
         ensureUserExists("Ngô Thanh Tùng", "tung.ngo@gmail.com", seedOwnerRole);
         ensureUserExists("Bùi Tuyết Mai", "mai.bui@gmail.com", seedOwnerRole);
 
-        if (hotelRepository.findByHotelName("Sofitel Legend Metropole Hanoi").isPresent()) {
+        if (hotelRepository.count() > 0) {
             return; // Dữ liệu mẫu ban đầu đã có
         }
 
