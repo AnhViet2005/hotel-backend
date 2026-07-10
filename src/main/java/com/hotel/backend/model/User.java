@@ -55,14 +55,18 @@ public class User {
     }
 
     @OneToMany(mappedBy = "owner")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Set<Hotel> ownedHotels;
 
     @OneToMany(mappedBy = "user")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Set<Booking> bookings;
 
     @OneToMany(mappedBy = "user")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Set<Review> reviews;
 
     @OneToMany(mappedBy = "user")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Set<Favorite> favorites;
 }
