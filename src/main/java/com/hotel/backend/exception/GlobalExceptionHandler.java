@@ -22,10 +22,23 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", "database_error", "message", ex.getMessage()));
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<?> handleResponseStatus(org.springframework.web.server.ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(Map.of(
+                    "error", "response_status_error",
+                    "message", ex.getReason() != null ? ex.getReason() : ex.getMessage()
+                ));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleAll(Exception ex) {
         log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "internal_error"));
+                .body(Map.of(
+                    "error", "internal_error",
+                    "exceptionClass", ex.getClass().getName(),
+                    "message", ex.getMessage() != null ? ex.getMessage() : "null"
+                ));
     }
 }
