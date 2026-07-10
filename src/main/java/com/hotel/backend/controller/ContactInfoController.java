@@ -25,19 +25,6 @@ public class ContactInfoController {
         return ResponseEntity.notFound().build();
     }
 
-    @Autowired
-    private org.springframework.core.env.Environment env;
-
-    @GetMapping("/db")
-    public ResponseEntity<?> getDbInfo() {
-        java.util.Map<String, String> info = new java.util.HashMap<>();
-        info.put("DATABASE_URL", System.getenv("DATABASE_URL"));
-        info.put("SPRING_DATASOURCE_URL", env.getProperty("spring.datasource.url"));
-        info.put("USERNAME", env.getProperty("spring.datasource.username"));
-        info.put("PASSWORD", env.getProperty("spring.datasource.password"));
-        return ResponseEntity.ok(info);
-    }
-
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createContactInfo(@RequestBody ContactInfo contactInfo) {
