@@ -19,17 +19,4 @@ public class PublicBannerController {
     public ResponseEntity<List<Banner>> getActiveBanners() {
         return ResponseEntity.ok(bannerRepository.findByIsActiveOrderByDisplayOrderAsc(true));
     }
-
-    @Autowired
-    private org.springframework.core.env.Environment env;
-
-    @GetMapping("/db")
-    public ResponseEntity<?> getDbInfo() {
-        java.util.Map<String, String> info = new java.util.HashMap<>();
-        info.put("DATABASE_URL", System.getenv("DATABASE_URL"));
-        info.put("SPRING_DATASOURCE_URL", env.getProperty("spring.datasource.url"));
-        info.put("USERNAME", env.getProperty("spring.datasource.username"));
-        info.put("PASSWORD", env.getProperty("spring.datasource.password"));
-        return ResponseEntity.ok(info);
-    }
 }
