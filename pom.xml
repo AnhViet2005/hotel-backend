@@ -99,6 +99,55 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <!-- ====================  PROFILE: production  ==================== -->
+    <profiles>
+        <profile>
+            <id>production</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <dependency.list.file>${project.basedir}/target/mvn-dependency-list.log</dependency.list.file>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.1</version>
+                        <executions>
+                            <execution>
+                                <id>list-dependencies</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>list</goal>
+                                </goals>
+                                <configuration>
+                                    <outputFile>${dependency.list.file}</outputFile>
+                                    <includeScope>runtime</includeScope>
+                                    <outputAbsoluteArtifactFilename>true</outputAbsoluteArtifactFilename>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
