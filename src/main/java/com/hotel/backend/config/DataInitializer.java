@@ -36,6 +36,7 @@ public class DataInitializer implements CommandLineRunner {
     private final FavoriteRepository favoriteRepository;
     private final HotelStatisticsRepository statisticsRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ContactInfoRepository contactInfoRepository;
 
     public DataInitializer(RoleRepository roleRepository,
                            UserRepository userRepository,
@@ -55,7 +56,8 @@ public class DataInitializer implements CommandLineRunner {
                            ReviewRepository reviewRepository,
                            FavoriteRepository favoriteRepository,
                            HotelStatisticsRepository statisticsRepository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           ContactInfoRepository contactInfoRepository) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.amenityRepository = amenityRepository;
@@ -75,6 +77,7 @@ public class DataInitializer implements CommandLineRunner {
         this.favoriteRepository = favoriteRepository;
         this.statisticsRepository = statisticsRepository;
         this.passwordEncoder = passwordEncoder;
+        this.contactInfoRepository = contactInfoRepository;
     }
 
     @Override
@@ -82,6 +85,25 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         // Luôn chạy logic vá phòng cho các khách sạn chưa có phòng
         addRoomTypesToHotelsWithoutRooms();
+
+        // Khởi tạo thông tin liên hệ mặc định nếu chưa có
+        if (contactInfoRepository.count() == 0) {
+            contactInfoRepository.save(ContactInfo.builder()
+                    .email("support@hotel.com")
+                    .phone("19001234")
+                    .address("123 Đường Lê Lợi, Bến Nghé, Quận 1, TP. Hồ Chí Minh")
+                    .companyName("Antigravity Hotel Group")
+                    .websiteUrl("https://hotel-booking-inky-eta.vercel.app")
+                    .facebookUrl("https://facebook.com/antigravity")
+                    .instagramUrl("https://instagram.com/antigravity")
+                    .twitterUrl("https://twitter.com/antigravity")
+                    .siteName("Antigravity Booking")
+                    .siteDescription("Hệ thống đặt phòng khách sạn trực tuyến hàng đầu Việt Nam")
+                    .seoKeywords("booking, hotel, hotel booking, đặt phòng khách sạn, du lịch")
+                    .commissionRate(10)
+                    .build());
+            System.out.println(">>> Đã khởi tạo thông tin liên hệ mặc định.");
+        }
 
         // --- PATCH FOR long.le@gmail.com ACCOUNT (Luôn chạy để đảm bảo quyền truy cập) ---
         userRepository.findByEmail("long.le@gmail.com").ifPresent(u -> {
