@@ -12,6 +12,7 @@ public interface HotelRepository extends JpaRepository<Hotel, Long> {
     List<Hotel> findByIsActiveTrueAndIsApprovedTrue();
     List<Hotel> findByIsActiveTrue();
     List<Hotel> findByOwnerId(Long ownerId);
+    Optional<Hotel> findByHotelName(String hotelName);
 
     @Query("SELECT DISTINCT h FROM Hotel h LEFT JOIN FETCH h.images WHERE h.id = :id")
     Optional<Hotel> findByIdWithImages(@Param("id") Long id);

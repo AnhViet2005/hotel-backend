@@ -192,7 +192,7 @@ public class DataInitializer implements CommandLineRunner {
         ensureUserExists("Ngô Thanh Tùng", "tung.ngo@gmail.com", seedOwnerRole);
         ensureUserExists("Bùi Tuyết Mai", "mai.bui@gmail.com", seedOwnerRole);
 
-        if (hotelRepository.count() > 0) {
+        if (hotelRepository.findByHotelName("Sofitel Legend Metropole Hanoi").isPresent()) {
             return; // Dữ liệu mẫu ban đầu đã có
         }
 
@@ -202,56 +202,53 @@ public class DataInitializer implements CommandLineRunner {
         Role customerRole = roleRepository.findByRoleName("CUSTOMER").orElseGet(() -> roleRepository.save(Role.builder().roleName("CUSTOMER").build()));
 
         // 2. Users
-        userRepository.save(User.builder()
+        userRepository.findByEmail("admin@hotel.com").orElseGet(() -> userRepository.save(User.builder()
                 .fullName("Hệ thống Quản trị")
                 .email("admin@hotel.com")
                 .passwordHash(passwordEncoder.encode("admin123"))
                 .role(adminRole)
                 .isActive(true)
-                .build());
+                .build()));
 
-        userRepository.save(User.builder()
+        userRepository.findByEmail("admin2@hotel.com").orElseGet(() -> userRepository.save(User.builder()
                 .fullName("Quản trị phụ")
                 .email("admin2@hotel.com")
                 .passwordHash(passwordEncoder.encode("admin456"))
                 .role(adminRole)
                 .isActive(true)
-                .build());
+                .build()));
 
-        User owner = userRepository.save(User.builder()
+        User owner = userRepository.findByEmail("owner@hotel.com").orElseGet(() -> userRepository.save(User.builder()
                 .fullName("Nguyễn Văn Chủ")
                 .email("owner@hotel.com")
                 .passwordHash(passwordEncoder.encode("owner123"))
                 .role(ownerRole)
                 .isActive(true)
-                .build());
+                .build()));
 
         List<User> customers = new ArrayList<>();
         String[] customerNames = {"Lê Minh Anh", "Trần Thị Bình", "Phạm Hoàng Gia", "Hoàng Thu Thảo", "Đặng Văn Hùng"};
         for (int i = 0; i < customerNames.length; i++) {
-            customers.add(userRepository.save(User.builder()
-                    .fullName(customerNames[i])
-                    .email("customer" + (i + 1) + "@gmail.com")
+            final int index = i;
+            customers.add(userRepository.findByEmail("customer" + (index + 1) + "@gmail.com").orElseGet(() -> userRepository.save(User.builder()
+                    .fullName(customerNames[index])
+                    .email("customer" + (index + 1) + "@gmail.com")
                     .passwordHash(passwordEncoder.encode("user123"))
                     .role(customerRole)
                     .isActive(true)
-                    .build()));
+                    .build())));
         }
 
         // 3. Amenities
-        List<Amenity> amenities = Arrays.asList(
-                Amenity.builder().amenityName("Free Wi-Fi").iconUrl("Wifi").build(),
-                Amenity.builder().amenityName("Hồ bơi").iconUrl("Pool").build(),
-                Amenity.builder().amenityName("Phòng Gym").iconUrl("Dumbbell").build(),
-                Amenity.builder().amenityName("Nhà hàng").iconUrl("Utensils").build(),
-                Amenity.builder().amenityName("Bãi đỗ xe").iconUrl("Car").build(),
-                Amenity.builder().amenityName("Spa & Wellness").iconUrl("Flower").build(),
-                Amenity.builder().amenityName("Điều hòa").iconUrl("Wind").build(),
-                Amenity.builder().amenityName("Quầy Bar").iconUrl("Wine").build(),
-                Amenity.builder().amenityName("Đưa đón sân bay").iconUrl("Plane").build(),
-                Amenity.builder().amenityName("Bồn tắm").iconUrl("Bath").build()
-        );
-        amenityRepository.saveAll(amenities);
+        List<Amenity> amenities = new ArrayList<>();
+        List<String> amenityNames = Arrays.asList("Free Wi-Fi", "Hồ bơi", "Phòng Gym", "Nhà hàng", "Bãi đỗ xe", "Spa & Wellness", "Điều hòa", "Quầy Bar", "Đưa đón sân bay", "Bồn tắm");
+        List<String> amenityIcons = Arrays.asList("Wifi", "Pool", "Dumbbell", "Utensils", "Car", "Flower", "Wind", "Wine", "Plane", "Bath");
+        
+        for (int i = 0; i < amenityNames.size(); i++) {
+            String name = amenityNames.get(i);
+            String icon = amenityIcons.get(i);
+            amenities.add(amenityRepository.findByAmenityName(name).orElseGet(() -> amenityRepository.save(Amenity.builder().amenityName(name).iconUrl(icon).build())));
+        }
 
         // 4. Hotels
         Hotel metropole = createHotel("Sofitel Legend Metropole Hanoi", 
@@ -425,6 +422,7 @@ public class DataInitializer implements CommandLineRunner {
                 .email("info@" + name.toLowerCase().replace(" ", "") + ".com")
                 .owner(owner)
                 .isActive(true)
+                .isApproved(true)
                 .build());
 
         // Policies
