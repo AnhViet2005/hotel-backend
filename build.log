@@ -1,0 +1,46 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.hotel:hotel-backend >-----------------------
+[INFO] Building hotel-backend 0.0.1-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:3.3.2:clean (default-clean) @ hotel-backend ---
+[INFO] Deleting D:\HocDiThangDauBuoi\TTTN\hotel-backend\target
+[INFO] 
+[INFO] --- maven-dependency-plugin:3.6.1:list (default-cli) @ hotel-backend ---
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ hotel-backend ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ hotel-backend ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 118 source files with javac [debug release 17] to target\classes
+[INFO] 
+[INFO] --- maven-resources-plugin:3.3.1:testResources (default-testResources) @ hotel-backend ---
+[INFO] skip non existing resourceDirectory D:\HocDiThangDauBuoi\TTTN\hotel-backend\src\test\resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.11.0:testCompile (default-testCompile) @ hotel-backend ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.1.2:test (default-test) @ hotel-backend ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- maven-jar-plugin:3.3.0:jar (default-jar) @ hotel-backend ---
+[INFO] Building jar: D:\HocDiThangDauBuoi\TTTN\hotel-backend\target\hotel-backend-0.0.1-SNAPSHOT.jar
+[INFO] 
+[INFO] --- spring-boot-maven-plugin:3.2.4:repackage (repackage) @ hotel-backend ---
+[INFO] Replacing main artifact D:\HocDiThangDauBuoi\TTTN\hotel-backend\target\hotel-backend-0.0.1-SNAPSHOT.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to D:\HocDiThangDauBuoi\TTTN\hotel-backend\target\hotel-backend-0.0.1-SNAPSHOT.jar.original
+[INFO] 
+[INFO] --- maven-dependency-plugin:3.6.1:list (list-dependencies) @ hotel-backend ---
+[INFO] 
+[INFO] --- maven-install-plugin:3.1.1:install (default-install) @ hotel-backend ---
+[INFO] Installing D:\HocDiThangDauBuoi\TTTN\hotel-backend\pom.xml to C:\Users\Anh Viet\.m2\repository\com\hotel\hotel-backend\0.0.1-SNAPSHOT\hotel-backend-0.0.1-SNAPSHOT.pom
+[INFO] Installing D:\HocDiThangDauBuoi\TTTN\hotel-backend\target\hotel-backend-0.0.1-SNAPSHOT.jar to C:\Users\Anh Viet\.m2\repository\com\hotel\hotel-backend\0.0.1-SNAPSHOT\hotel-backend-0.0.1-SNAPSHOT.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  6.940 s
+[INFO] Finished at: 2026-07-10T13:28:50+07:00
+[INFO] ------------------------------------------------------------------------

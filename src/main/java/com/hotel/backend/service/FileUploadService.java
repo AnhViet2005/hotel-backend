@@ -1,48 +1,63 @@
 package com.hotel.backend.service;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Uploads files to Cloudinary cloud storage.
+ * Returns a permanent public URL (https://res.cloudinary.com/...).
+ * No local filesystem used — safe for Railway/Vercel ephemeral containers.
+ */
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class FileUploadService {
 
-    private final Path rootLocation = Paths.get("uploads");
+    private final Cloudinary cloudinary;
 
-    public FileUploadService() {
-        try {
-            Files.createDirectories(rootLocation);
-        } catch (IOException e) {
-            throw new RuntimeException("Could not initialize storage", e);
-        }
-    }
-
+    /**
+     * Uploads a file to Cloudinary and returns the secure public URL.
+     * The URL is permanent and does NOT depend on the server's filesystem.
+     *
+     * @param file multipart file from request
+     * @return full Cloudinary URL e.g. https://res.cloudinary.com/demo/image/upload/xxx.jpg
+     */
     public String store(MultipartFile file) {
         try {
             if (file.isEmpty()) {
-                throw new RuntimeException("Failed to store empty file.");
+                throw new RuntimeException("Cannot upload empty file.");
             }
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String newFilename = UUID.randomUUID().toString() + extension;
-            Path destinationFile = this.rootLocation.resolve(Paths.get(newFilename)).normalize().toAbsolutePath();
-            
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
-            }
-            return newFilename;
+
+            String publicId = "hotel-uploads/" + UUID.randomUUID();
+
+            Map<?, ?> result = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                "public_id", publicId,
+                "resource_type", "auto",
+                "overwrite", false
+            ));
+
+            String secureUrl = (String) result.get("secure_url");
+            log.info("Uploaded to Cloudinary: {}", secureUrl);
+            return secureUrl;
+
         } catch (IOException e) {
-            throw new RuntimeException("Failed to store file.", e);
+            log.error("Cloudinary upload failed", e);
+            throw new RuntimeException("Failed to upload file to Cloudinary: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Kept for backward-compat. Returns the URL directly (same as store()).
+     */
+    public String storeAndGetUrl(MultipartFile file) {
+        return store(file);
     }
 }

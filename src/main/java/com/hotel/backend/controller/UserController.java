@@ -120,10 +120,10 @@ public class UserController {
             user.setPasswordHash(passwordEncoder.encode(newPassword));
         }
 
-        // Update avatar
+        // Update avatar: `store()` returns the full Cloudinary URL, use it directly
         if (avatar != null && !avatar.isEmpty()) {
-            String filename = fileUploadService.store(avatar);
-            user.setAvatarUrl("http://localhost:8080/uploads/" + filename);
+            String avatarUrl = fileUploadService.store(avatar);
+            user.setAvatarUrl(avatarUrl);
         }
 
         userRepository.save(user);

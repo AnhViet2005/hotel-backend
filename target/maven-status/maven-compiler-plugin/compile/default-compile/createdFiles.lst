@@ -7,6 +7,7 @@ com\hotel\backend\model\BookingRoom.class
 com\hotel\backend\repository\HotelRepository.class
 com\hotel\backend\controller\UploadController.class
 com\hotel\backend\controller\UserNotificationController.class
+com\hotel\backend\config\DataSourceConfig.class
 com\hotel\backend\controller\AdminBannerController.class
 com\hotel\backend\controller\AdminController.class
 com\hotel\backend\service\ReviewService.class
@@ -38,6 +39,7 @@ com\hotel\backend\model\Hotel$HotelBuilder.class
 com\hotel\backend\dto\AdminUserResponse$AdminUserResponseBuilder.class
 com\hotel\backend\model\Payment$PaymentStatus.class
 com\hotel\backend\service\PublicHotelService.class
+com\hotel\backend\controller\HealthController.class
 com\hotel\backend\repository\RoomTypeRepository.class
 com\hotel\backend\controller\PublicBannerController.class
 com\hotel\backend\model\BookingRoomRate.class
@@ -81,6 +83,7 @@ com\hotel\backend\dto\PublicRoomTypeResponse.class
 com\hotel\backend\service\AdminUserService.class
 com\hotel\backend\model\HotelAmenity$HotelAmenityId$HotelAmenityIdBuilder.class
 com\hotel\backend\dto\AdminRoomTypeResponse.class
+com\hotel\backend\dto\OwnerDetailsResponse.class
 com\hotel\backend\repository\BookingRoomRateRepository.class
 com\hotel\backend\HotelBackendApplication.class
 com\hotel\backend\repository\RoomCalendarRepository.class
@@ -120,6 +123,7 @@ com\hotel\backend\controller\AdminReviewController.class
 com\hotel\backend\dto\UserBookingResponse.class
 com\hotel\backend\model\HotelPolicy.class
 com\hotel\backend\repository\BookingRoomRepository.class
+com\hotel\backend\exception\GlobalExceptionHandler.class
 com\hotel\backend\model\Review$ReviewBuilder.class
 com\hotel\backend\model\BookingRoom$BookingRoomBuilder.class
 com\hotel\backend\service\FileUploadService.class
@@ -147,6 +151,7 @@ com\hotel\backend\config\WebConfig.class
 com\hotel\backend\dto\RegisterRequest.class
 com\hotel\backend\model\RoomType$RoomTypeBuilder.class
 com\hotel\backend\scratch\NotificationCheckRunner.class
+com\hotel\backend\dto\OwnerDetailsResponse$OwnerDetailsResponseBuilder.class
 com\hotel\backend\model\RoomImage.class
 com\hotel\backend\dto\RecentBookingResponse.class
 com\hotel\backend\service\AuthService.class

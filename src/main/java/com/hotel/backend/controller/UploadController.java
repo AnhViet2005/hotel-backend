@@ -1,8 +1,6 @@
 package com.hotel.backend.controller;
 
-
 import com.hotel.backend.service.FileUploadService;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,11 +21,12 @@ public class UploadController {
             return ResponseEntity.badRequest().body(Map.of("message", "File is empty"));
         }
         try {
-            String filename = fileUploadService.store(file);
-            String fileUrl = "http://localhost:8080/uploads/" + filename;
+            // store() now returns a full Cloudinary URL (https://res.cloudinary.com/...)
+            String fileUrl = fileUploadService.store(file);
             return ResponseEntity.ok(Map.of("url", fileUrl));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("message", "Failed to upload file: " + e.getMessage()));
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("message", "Failed to upload file: " + e.getMessage()));
         }
     }
 }
