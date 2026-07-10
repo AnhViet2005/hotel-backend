@@ -136,6 +136,48 @@ public class DataInitializer implements CommandLineRunner {
             }
         });
 
+        // --- PATCH FOR admin@hotel.com (Đảm bảo tài khoản admin hoạt động với mật khẩu admin123) ---
+        Role patchAdminRole = roleRepository.findByRoleName("ADMIN").orElseGet(() -> roleRepository.save(Role.builder().roleName("ADMIN").build()));
+        Optional<User> adminOpt = userRepository.findByEmail("admin@hotel.com");
+        if (adminOpt.isPresent()) {
+            User admin = adminOpt.get();
+            admin.setPasswordHash(passwordEncoder.encode("admin123"));
+            admin.setRole(patchAdminRole);
+            admin.setIsActive(true);
+            userRepository.save(admin);
+            System.out.println(">>> Đã cập nhật mật khẩu cho admin@hotel.com thành admin123");
+        } else {
+            userRepository.save(User.builder()
+                    .fullName("Hệ thống Quản trị")
+                    .email("admin@hotel.com")
+                    .passwordHash(passwordEncoder.encode("admin123"))
+                    .role(patchAdminRole)
+                    .isActive(true)
+                    .build());
+            System.out.println(">>> Đã tạo mới tài khoản admin@hotel.com với mật khẩu admin123");
+        }
+
+        // --- PATCH FOR owner@hotel.com (Đảm bảo tài khoản owner hoạt động với mật khẩu owner123) ---
+        Role patchOwnerRole = roleRepository.findByRoleName("OWNER").orElseGet(() -> roleRepository.save(Role.builder().roleName("OWNER").build()));
+        Optional<User> ownerOpt = userRepository.findByEmail("owner@hotel.com");
+        if (ownerOpt.isPresent()) {
+            User ownerUser = ownerOpt.get();
+            ownerUser.setPasswordHash(passwordEncoder.encode("owner123"));
+            ownerUser.setRole(patchOwnerRole);
+            ownerUser.setIsActive(true);
+            userRepository.save(ownerUser);
+            System.out.println(">>> Đã cập nhật mật khẩu cho owner@hotel.com thành owner123");
+        } else {
+            userRepository.save(User.builder()
+                    .fullName("Nguyễn Văn Chủ")
+                    .email("owner@hotel.com")
+                    .passwordHash(passwordEncoder.encode("owner123"))
+                    .role(patchOwnerRole)
+                    .isActive(true)
+                    .build());
+            System.out.println(">>> Đã tạo mới tài khoản owner@hotel.com với mật khẩu owner123");
+        }
+
         if (hotelRepository.count() > 0) {
             return; // Dữ liệu mẫu ban đầu đã có
         }
