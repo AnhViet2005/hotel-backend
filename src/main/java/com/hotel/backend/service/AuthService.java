@@ -176,7 +176,7 @@ public class AuthService {
         String resetLink = "https://hotel-booking-inky-eta.vercel.app/reset-password?token=" + token;
         emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
         
-        return "Yêu cầu khôi phục mật khẩu đã được xử lý. Do môi trường Cloud chặn cổng gửi mail SMTP, bạn có thể bấm trực tiếp vào đường dẫn thử nghiệm dưới đây để đặt lại mật khẩu:\n\n" + resetLink;
+        return "Yêu cầu khôi phục mật khẩu đã được xử lý. Vui lòng kiểm tra hộp thư đến của bạn.";
     }
 
     public void resetPassword(String token, String newPassword) {
