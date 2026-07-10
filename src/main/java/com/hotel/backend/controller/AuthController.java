@@ -43,8 +43,8 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@RequestBody com.hotel.backend.dto.ForgotPasswordRequest request) {
-        authService.forgotPassword(request.getEmail());
-        return ResponseEntity.ok("Yêu cầu khôi phục mật khẩu đã được gửi đến email của bạn.");
+        String msg = authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok(msg);
     }
 
     @PostMapping("/reset-password")

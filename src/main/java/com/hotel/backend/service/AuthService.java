@@ -164,7 +164,7 @@ public class AuthService {
                 .build();
     }
 
-    public void forgotPassword(String email) {
+    public String forgotPassword(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Email không tồn tại trong hệ thống."));
 
@@ -173,8 +173,10 @@ public class AuthService {
         user.setResetTokenExpiry(java.time.LocalDateTime.now().plusMinutes(15));
         userRepository.save(user);
 
-        String resetLink = "http://localhost:3000/reset-password?token=" + token;
+        String resetLink = "https://hotel-booking-inky-eta.vercel.app/reset-password?token=" + token;
         emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
+        
+        return "Yêu cầu khôi phục mật khẩu đã được xử lý. Do môi trường Cloud chặn cổng gửi mail SMTP, bạn có thể bấm trực tiếp vào đường dẫn thử nghiệm dưới đây để đặt lại mật khẩu:\n\n" + resetLink;
     }
 
     public void resetPassword(String token, String newPassword) {
